@@ -19,8 +19,6 @@ OUTPUT_DIR=./out
 
 # --- Targets ---
 
-# The .PHONY directive tells make that these are not files.
-# This prevents conflicts with files of the same name and ensures the command runs every time.
 .PHONY: all build run proto test clean install-deps help
 
 # Default target executed when you just run 'make'
@@ -48,7 +46,7 @@ test:
 	@echo "Running tests..."
 	go test -v ./...
 
-# Install necessary Go tools (like the protoc plugin) and tidy the go.mod file
+# Install necessary Go tools and tidy the go.mod file
 install-deps:
 	@echo "Installing Go tools and dependencies..."
 	@go mod tidy
@@ -67,7 +65,7 @@ help:
 	@echo "---------------------"
 	@echo "Available commands:"
 	@echo "  make build          - Compile the Axon CLI."
-	@echo "  make run            - Run the CLI. Pass arguments with ARGS=\"...\"."
+	@echo "  make run            - Run the CLI. Pass arguments with ARGS=\"...\" (e.g., make run ARGS=\"build examples/stdlib_example.ax\")."
 	@echo "  make proto          - Regenerate Go code from the .proto file."
 	@echo "  make test           - Run all Go tests."
 	@echo "  make clean          - Remove the compiled binary and the '/out' directory."
