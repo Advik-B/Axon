@@ -1,7 +1,12 @@
 {
-  "id": "basic-addition",
-  "name": "Add Numbers",
+  "id": "basic-addition-exec",
+  "name": "Add Numbers with Execution Flow",
   "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "label": "Start"
+    },
     {
       "id": "const1",
       "type": "CONSTANT",
@@ -36,16 +41,20 @@
     {
       "id": "printer",
       "type": "FUNCTION",
-      "label": "Print",
+      "label": "PrintResult",
+      "impl_reference": "fmt.Println",
       "inputs": [
-        { "name": "in", "type": "INTEGER" }
+        { "name": "a", "type": "ANY" }
       ]
     }
   ],
   "data_edges": [
     { "from_node_id": "const1", "from_port": "out", "to_node_id": "sum", "to_port": "a" },
     { "from_node_id": "const2", "from_port": "out", "to_node_id": "sum", "to_port": "b" },
-    { "from_node_id": "sum", "from_port": "out", "to_node_id": "printer", "to_port": "in" }
+    { "from_node_id": "sum", "from_port": "out", "to_node_id": "printer", "to_port": "a" }
   ],
-  "exec_edges": []
+  "exec_edges": [
+    { "from_node_id": "start", "to_node_id": "sum" },
+    { "from_node_id": "sum", "to_node_id": "printer" }
+  ]
 }
