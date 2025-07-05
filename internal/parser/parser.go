@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"io"
-	"github.com/Advik-B/Axion/pkg/axon" // Use your actual go.mod path here
+	"github.com/Advik-B/Axon/pkg/axon" // Use your actual go.mod path here
 )
 
 // LoadGraphFromFile reads an .ax file and parses it into an Axon Graph struct.

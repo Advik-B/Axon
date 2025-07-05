@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/Advik-B/Axion/internal/parser"
-	"github.com/Advik-B/Axion/internal/transpiler"
+	"github.com/Advik-B/Axon/internal/parser"
+	"github.com/Advik-B/Axon/internal/transpiler"
 )
 
 func main() {
