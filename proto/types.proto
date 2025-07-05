@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package axon;
+
+option go_package = "github.com/Advik-B/Axon/langpb";
+
+// Node types represent kinds of blocks in the visual language.
+enum NodeType {
+    NODE_UNKNOWN = 0;
+    START = 1;
+    END = 2;
+    CONSTANT = 3;
+    VARIABLE = 4;
+    FUNCTION = 5;
+    OPERATOR = 6;
+    CONDITIONAL = 7;
+    LOOP = 8;
+    CUSTOM = 9;
+}
+
+// Data types for input/output ports
+enum DataType {
+    TYPE_UNKNOWN = 0;
+    INTEGER = 1;
+    FLOAT = 2;
+    BOOLEAN = 3;
+    RUNE = 4;
+    STRING = 5;
+    ARRAY = 6;
+    STRUCT = 7;
+    MAP = 8;
+    VOID = 9;
+}
+
+// Represents an input/output port
+message Port {
+    string name = 1;
+    DataType type = 2;
+    bool is_optional = 3;
+}
+
+// Core building block of Axon — one visual node
+message Node {
+    string id = 1;                   // Unique node ID
+    NodeType type = 2;              // What kind of node it is
+    string label = 3;               // Human-readable name (used for variable/function names)
+    repeated Port inputs = 4;       // Named input ports
+    repeated Port outputs = 5;      // Named output ports
+
+    // Configuration values for static parameters (e.g., constant = 42, loop limit = 10)
+    map<string, string> config = 6;
+
+    string description = 7;         // Optional help text
+
+    string impl_reference = 8;      // For CUSTOM nodes (e.g., user-defined functions)
+}
+
+// A connection from one node's output to another node's input (data dependency)
+message DataEdge {
+    string from_node_id = 1;
+    string from_port = 2;
+    string to_node_id = 3;
+    string to_port = 4;
+}
+
+// A connection indicating the order of execution (e.g., from one statement to the next)
+message ExecEdge {
+    string from_node_id = 1;
+    string to_node_id = 2;
+}
+
+// A complete Axon visual program
+message Graph {
+    string id = 1;
+    string name = 2;
+
+    repeated Node nodes = 3;
+    repeated DataEdge data_edges = 4;
+    repeated ExecEdge exec_edges = 5;
+}
