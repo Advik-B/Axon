@@ -2,12 +2,15 @@ package parser
 
 import (
 	"encoding/json"
-	"os"
 	"io"
-	"github.com/Advik-B/Axon/pkg/axon" // Use your actual go.mod path here
+	"os"
+
+	"github.com/Advik-B/Axon/pkg/axon"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // LoadGraphFromFile reads an .ax file and parses it into an Axon Graph struct.
+// It uses protojson to unmarshal directly into the protobuf-generated structs.
 func LoadGraphFromFile(filePath string) (*axon.Graph, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -21,8 +24,15 @@ func LoadGraphFromFile(filePath string) (*axon.Graph, error) {
 	}
 
 	var graph axon.Graph
-	if err := json.Unmarshal(bytes, &graph); err != nil {
-		return nil, err
+	// Use a custom unmarshaler to handle enums as strings
+	unmarshaler := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+	}
+	if err := unmarshaler.Unmarshal(bytes, &graph); err != nil {
+		// Fallback for simple JSON in case protojson fails, for robustness.
+		if errJson := json.Unmarshal(bytes, &graph); errJson != nil {
+			return nil, err // Return the original protojson error
+		}
 	}
 
 	return &graph, nil
