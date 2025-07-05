@@ -11,7 +11,7 @@ import (
 func generateNodeCode(state *transpilationState, node *axon.Node) (string, error) {
 	switch node.Type {
 	case axon.NodeType_START:
-		return "// Execution starts\n", nil // Start node is a marker, no code needed
+		return "\t// Execution starts\n", nil // Start node is a marker, no code needed
 	case axon.NodeType_CONSTANT:
 		return generateConstant(state, node)
 	case axon.NodeType_OPERATOR:
@@ -84,13 +84,30 @@ func generateFunction(state *transpilationState, node *axon.Node) (string, error
 		if err != nil {
 			return "", fmt.Errorf("could not resolve input '%s' for function node %s: %w", inputPort.Name, node.Id, err)
 		}
-		// Special handling for functions expecting strings from byte arrays
-		if strings.HasSuffix(funcName, ".ToUpper") || strings.HasSuffix(funcName, ".ToLower") {
-			sourceNode, sourcePort, _ := findSourceEdge(state.graph.DataEdges, node.Id, inputPort.Name)
-			if sourceNode != nil && len(sourceNode.Outputs) > 0 && sourceNode.Outputs[0].Type == axon.DataType_BYTE_ARRAY {
-				arg = fmt.Sprintf("string(%s)", arg)
+
+		// **FIXED BLOCK**: This section now correctly checks the source node's output type
+		// and applies a type cast if necessary (e.g., []byte -> string).
+		edge, err := findSourceEdge(state.graph.DataEdges, node.Id, inputPort.Name)
+		if err == nil { // If we found the connecting edge
+			sourceNode := state.nodeMap[edge.FromNodeId]
+			if sourceNode != nil {
+				// Find the specific output port on the source node to get its type
+				var sourcePortType axon.DataType
+				for _, p := range sourceNode.Outputs {
+					if p.Name == edge.FromPort {
+						sourcePortType = p.Type
+						break
+					}
+				}
+
+				// If source is BYTE_ARRAY and the function expects a string, perform the cast.
+				// This is a simple heuristic that can be expanded.
+				if sourcePortType == axon.DataType_BYTE_ARRAY && (strings.HasSuffix(funcName, ".ToUpper") || strings.HasSuffix(funcName, ".ToLower")) {
+					arg = fmt.Sprintf("string(%s)", arg)
+				}
 			}
 		}
+		
 		args = append(args, arg)
 	}
 	argString := strings.Join(args, ", ")
@@ -103,7 +120,7 @@ func generateFunction(state *transpilationState, node *axon.Node) (string, error
 		if len(node.Outputs) > 1 {
 			varName = fmt.Sprintf("%s%d", node.Label, i)
 		}
-		// Don't create a var for the error if it's not used.
+		// Don't create a var for the error if it's not used by another node.
 		if outputPort.Type == axon.DataType_ERROR && !isOutputUsed(state.graph, node.Id, outputPort.Name) {
 			varName = "_"
 		}
