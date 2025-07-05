@@ -21,20 +21,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Node types represent kinds of blocks in the visual language.
+// NodeType defines the behavior of a node.
 type NodeType int32
 
 const (
 	NodeType_NODE_UNKNOWN NodeType = 0
-	NodeType_START        NodeType = 1
-	NodeType_END          NodeType = 2
-	NodeType_CONSTANT     NodeType = 3
-	NodeType_VARIABLE     NodeType = 4
-	NodeType_FUNCTION     NodeType = 5
-	NodeType_OPERATOR     NodeType = 6
-	NodeType_CONDITIONAL  NodeType = 7
-	NodeType_LOOP         NodeType = 8
-	NodeType_CUSTOM       NodeType = 9
+	NodeType_START        NodeType = 1 // Entry point for an execution flow.
+	NodeType_CONSTANT     NodeType = 2 // Provides a static value.
+	NodeType_FUNCTION     NodeType = 3 // Calls a built-in or standard library function.
+	NodeType_OPERATOR     NodeType = 4 // Performs a binary operation (e.g., +, -, *).
+	NodeType_CONDITIONAL  NodeType = 5 // An IF statement, directs execution flow.
+	NodeType_LOOP         NodeType = 6 // A FOR loop, directs execution flow.
 )
 
 // Enum value maps for NodeType.
@@ -42,26 +39,20 @@ var (
 	NodeType_name = map[int32]string{
 		0: "NODE_UNKNOWN",
 		1: "START",
-		2: "END",
-		3: "CONSTANT",
-		4: "VARIABLE",
-		5: "FUNCTION",
-		6: "OPERATOR",
-		7: "CONDITIONAL",
-		8: "LOOP",
-		9: "CUSTOM",
+		2: "CONSTANT",
+		3: "FUNCTION",
+		4: "OPERATOR",
+		5: "CONDITIONAL",
+		6: "LOOP",
 	}
 	NodeType_value = map[string]int32{
 		"NODE_UNKNOWN": 0,
 		"START":        1,
-		"END":          2,
-		"CONSTANT":     3,
-		"VARIABLE":     4,
-		"FUNCTION":     5,
-		"OPERATOR":     6,
-		"CONDITIONAL":  7,
-		"LOOP":         8,
-		"CUSTOM":       9,
+		"CONSTANT":     2,
+		"FUNCTION":     3,
+		"OPERATOR":     4,
+		"CONDITIONAL":  5,
+		"LOOP":         6,
 	}
 )
 
@@ -92,7 +83,7 @@ func (NodeType) EnumDescriptor() ([]byte, []int) {
 	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{0}
 }
 
-// Data types for input/output ports
+// DataType for input/output ports.
 type DataType int32
 
 const (
@@ -100,12 +91,11 @@ const (
 	DataType_INTEGER      DataType = 1
 	DataType_FLOAT        DataType = 2
 	DataType_BOOLEAN      DataType = 3
-	DataType_RUNE         DataType = 4
-	DataType_STRING       DataType = 5
-	DataType_ARRAY        DataType = 6
-	DataType_STRUCT       DataType = 7
-	DataType_MAP          DataType = 8
-	DataType_VOID         DataType = 9
+	DataType_STRING       DataType = 4
+	// Special types
+	DataType_ANY        DataType = 5 // Can connect to any other type (used for fmt.Println, etc.)
+	DataType_ERROR      DataType = 6 // Represents a Go error type.
+	DataType_BYTE_ARRAY DataType = 7 // Represents []byte.
 )
 
 // Enum value maps for DataType.
@@ -115,24 +105,20 @@ var (
 		1: "INTEGER",
 		2: "FLOAT",
 		3: "BOOLEAN",
-		4: "RUNE",
-		5: "STRING",
-		6: "ARRAY",
-		7: "STRUCT",
-		8: "MAP",
-		9: "VOID",
+		4: "STRING",
+		5: "ANY",
+		6: "ERROR",
+		7: "BYTE_ARRAY",
 	}
 	DataType_value = map[string]int32{
 		"TYPE_UNKNOWN": 0,
 		"INTEGER":      1,
 		"FLOAT":        2,
 		"BOOLEAN":      3,
-		"RUNE":         4,
-		"STRING":       5,
-		"ARRAY":        6,
-		"STRUCT":       7,
-		"MAP":          8,
-		"VOID":         9,
+		"STRING":       4,
+		"ANY":          5,
+		"ERROR":        6,
+		"BYTE_ARRAY":   7,
 	}
 )
 
@@ -163,12 +149,11 @@ func (DataType) EnumDescriptor() ([]byte, []int) {
 	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{1}
 }
 
-// Represents an input/output port
+// Port represents a connection point for data on a node.
 type Port struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type          DataType               `protobuf:"varint,2,opt,name=type,proto3,enum=axon.DataType" json:"type,omitempty"`
-	IsOptional    bool                   `protobuf:"varint,3,opt,name=is_optional,json=isOptional,proto3" json:"is_optional,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                     // The name of the port (e.g., "a", "b", "result").
+	Type          DataType               `protobuf:"varint,2,opt,name=type,proto3,enum=axon.DataType" json:"type,omitempty"` // The data type this port accepts or produces.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -217,25 +202,21 @@ func (x *Port) GetType() DataType {
 	return DataType_TYPE_UNKNOWN
 }
 
-func (x *Port) GetIsOptional() bool {
-	if x != nil {
-		return x.IsOptional
-	}
-	return false
-}
-
-// Core building block of Axon — one visual node
+// A Node is the core building block of an Axon graph.
 type Node struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
-	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                         // Unique node ID
-	Type    NodeType               `protobuf:"varint,2,opt,name=type,proto3,enum=axon.NodeType" json:"type,omitempty"` // What kind of node it is
-	Label   string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`                   // Human-readable name (used for variable/function names)
-	Inputs  []*Port                `protobuf:"bytes,4,rep,name=inputs,proto3" json:"inputs,omitempty"`                 // Named input ports
-	Outputs []*Port                `protobuf:"bytes,5,rep,name=outputs,proto3" json:"outputs,omitempty"`               // Named output ports
-	// Configuration values for static parameters (e.g., constant = 42, loop limit = 10)
-	Config        map[string]string `protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Description   string            `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`                          // Optional help text
-	ImplReference string            `protobuf:"bytes,8,opt,name=impl_reference,json=implReference,proto3" json:"impl_reference,omitempty"` // For CUSTOM nodes (e.g., user-defined functions)
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                         // Unique node ID within the graph.
+	Type    NodeType               `protobuf:"varint,2,opt,name=type,proto3,enum=axon.NodeType" json:"type,omitempty"` // The behavior of this node.
+	Label   string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`                   // Human-readable name used for variable naming.
+	Inputs  []*Port                `protobuf:"bytes,4,rep,name=inputs,proto3" json:"inputs,omitempty"`                 // Data input ports.
+	Outputs []*Port                `protobuf:"bytes,5,rep,name=outputs,proto3" json:"outputs,omitempty"`               // Data output ports.
+	// Node-specific configuration.
+	// For CONSTANT: "value" -> "123", "\"hello\"", "true"
+	// For OPERATOR: "op" -> "+", "-", "=="
+	Config map[string]string `protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// For FUNCTION nodes, this specifies the Go function to call.
+	// Example: "fmt.Println", "os.ReadFile", "strings.ToUpper"
+	ImplReference string `protobuf:"bytes,7,opt,name=impl_reference,json=implReference,proto3" json:"impl_reference,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -312,13 +293,6 @@ func (x *Node) GetConfig() map[string]string {
 	return nil
 }
 
-func (x *Node) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
 func (x *Node) GetImplReference() string {
 	if x != nil {
 		return x.ImplReference
@@ -326,7 +300,8 @@ func (x *Node) GetImplReference() string {
 	return ""
 }
 
-// A connection from one node's output to another node's input (data dependency)
+// DataEdge represents a data dependency between two nodes.
+// It connects an output port of one node to an input port of another.
 type DataEdge struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FromNodeId    string                 `protobuf:"bytes,1,opt,name=from_node_id,json=fromNodeId,proto3" json:"from_node_id,omitempty"`
@@ -395,7 +370,8 @@ func (x *DataEdge) GetToPort() string {
 	return ""
 }
 
-// A connection indicating the order of execution (e.g., from one statement to the next)
+// ExecEdge represents an execution dependency between two nodes.
+// It dictates the order of operations.
 type ExecEdge struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FromNodeId    string                 `protobuf:"bytes,1,opt,name=from_node_id,json=fromNodeId,proto3" json:"from_node_id,omitempty"`
@@ -448,7 +424,7 @@ func (x *ExecEdge) GetToNodeId() string {
 	return ""
 }
 
-// A complete Axon visual program
+// A Graph is a complete Axon visual program.
 type Graph struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -529,12 +505,10 @@ var File_pkg_axon_axon_proto protoreflect.FileDescriptor
 
 const file_pkg_axon_axon_proto_rawDesc = "" +
 	"\n" +
-	"\x13pkg/axon/axon.proto\x12\x04axon\"_\n" +
+	"\x13pkg/axon/axon.proto\x12\x04axon\">\n" +
 	"\x04Port\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
-	"\x04type\x18\x02 \x01(\x0e2\x0e.axon.DataTypeR\x04type\x12\x1f\n" +
-	"\vis_optional\x18\x03 \x01(\bR\n" +
-	"isOptional\"\xce\x02\n" +
+	"\x04type\x18\x02 \x01(\x0e2\x0e.axon.DataTypeR\x04type\"\xac\x02\n" +
 	"\x04Node\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x0e.axon.NodeTypeR\x04type\x12\x14\n" +
@@ -543,9 +517,8 @@ const file_pkg_axon_axon_proto_rawDesc = "" +
 	".axon.PortR\x06inputs\x12$\n" +
 	"\aoutputs\x18\x05 \x03(\v2\n" +
 	".axon.PortR\aoutputs\x12.\n" +
-	"\x06config\x18\x06 \x03(\v2\x16.axon.Node.ConfigEntryR\x06config\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\x12%\n" +
-	"\x0eimpl_reference\x18\b \x01(\tR\rimplReference\x1a9\n" +
+	"\x06config\x18\x06 \x03(\v2\x16.axon.Node.ConfigEntryR\x06config\x12%\n" +
+	"\x0eimpl_reference\x18\a \x01(\tR\rimplReference\x1a9\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x80\x01\n" +
@@ -569,33 +542,26 @@ const file_pkg_axon_axon_proto_rawDesc = "" +
 	"\n" +
 	"data_edges\x18\x04 \x03(\v2\x0e.axon.DataEdgeR\tdataEdges\x12-\n" +
 	"\n" +
-	"exec_edges\x18\x05 \x03(\v2\x0e.axon.ExecEdgeR\texecEdges*\x8f\x01\n" +
+	"exec_edges\x18\x05 \x03(\v2\x0e.axon.ExecEdgeR\texecEdges*l\n" +
 	"\bNodeType\x12\x10\n" +
 	"\fNODE_UNKNOWN\x10\x00\x12\t\n" +
-	"\x05START\x10\x01\x12\a\n" +
-	"\x03END\x10\x02\x12\f\n" +
-	"\bCONSTANT\x10\x03\x12\f\n" +
-	"\bVARIABLE\x10\x04\x12\f\n" +
-	"\bFUNCTION\x10\x05\x12\f\n" +
-	"\bOPERATOR\x10\x06\x12\x0f\n" +
-	"\vCONDITIONAL\x10\a\x12\b\n" +
-	"\x04LOOP\x10\b\x12\n" +
-	"\n" +
-	"\x06CUSTOM\x10\t*\x81\x01\n" +
+	"\x05START\x10\x01\x12\f\n" +
+	"\bCONSTANT\x10\x02\x12\f\n" +
+	"\bFUNCTION\x10\x03\x12\f\n" +
+	"\bOPERATOR\x10\x04\x12\x0f\n" +
+	"\vCONDITIONAL\x10\x05\x12\b\n" +
+	"\x04LOOP\x10\x06*q\n" +
 	"\bDataType\x12\x10\n" +
 	"\fTYPE_UNKNOWN\x10\x00\x12\v\n" +
 	"\aINTEGER\x10\x01\x12\t\n" +
 	"\x05FLOAT\x10\x02\x12\v\n" +
-	"\aBOOLEAN\x10\x03\x12\b\n" +
-	"\x04RUNE\x10\x04\x12\n" +
+	"\aBOOLEAN\x10\x03\x12\n" +
 	"\n" +
-	"\x06STRING\x10\x05\x12\t\n" +
-	"\x05ARRAY\x10\x06\x12\n" +
+	"\x06STRING\x10\x04\x12\a\n" +
+	"\x03ANY\x10\x05\x12\t\n" +
+	"\x05ERROR\x10\x06\x12\x0e\n" +
 	"\n" +
-	"\x06STRUCT\x10\a\x12\a\n" +
-	"\x03MAP\x10\b\x12\b\n" +
-	"\x04VOID\x10\tB\n" +
-	"Z\bpkg/axonb\x06proto3"
+	"BYTE_ARRAY\x10\aB\"Z github.com/Advik-B/Axon/pkg/axonb\x06proto3"
 
 var (
 	file_pkg_axon_axon_proto_rawDescOnce sync.Once
