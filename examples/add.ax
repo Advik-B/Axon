@@ -1,0 +1,51 @@
+{
+  "id": "basic-addition",
+  "name": "Add Numbers",
+  "nodes": [
+    {
+      "id": "const1",
+      "type": "CONSTANT",
+      "label": "x",
+      "outputs": [
+        { "name": "out", "type": "INTEGER" }
+      ],
+      "config": { "value": "5" }
+    },
+    {
+      "id": "const2",
+      "type": "CONSTANT",
+      "label": "y",
+      "outputs": [
+        { "name": "out", "type": "INTEGER" }
+      ],
+      "config": { "value": "3" }
+    },
+    {
+      "id": "sum",
+      "type": "OPERATOR",
+      "label": "z",
+      "inputs": [
+        { "name": "a", "type": "INTEGER" },
+        { "name": "b", "type": "INTEGER" }
+      ],
+      "outputs": [
+        { "name": "out", "type": "INTEGER" }
+      ],
+      "config": { "op": "+" }
+    },
+    {
+      "id": "printer",
+      "type": "FUNCTION",
+      "label": "Print",
+      "inputs": [
+        { "name": "in", "type": "INTEGER" }
+      ]
+    }
+  ],
+  "data_edges": [
+    { "from_node_id": "const1", "from_port": "out", "to_node_id": "sum", "to_port": "a" },
+    { "from_node_id": "const2", "from_port": "out", "to_node_id": "sum", "to_port": "b" },
+    { "from_node_id": "sum", "from_port": "out", "to_node_id": "printer", "to_port": "in" }
+  ],
+  "exec_edges": []
+}
