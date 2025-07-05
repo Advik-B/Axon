@@ -1,17 +1,22 @@
 package parser
 
 import (
-	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/Advik-B/Axon/pkg/axon"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
-// LoadGraphFromFile reads an .ax file and parses it into an Axon Graph struct.
-// It uses protojson to unmarshal directly into the protobuf-generated structs.
-func LoadGraphFromFile(filePath string) (*axon.Graph, error) {
+// Graph is an alias to the generated struct for easier use in other packages.
+type Graph = axon.Graph
+
+// LoadGraphFromFile reads an .ax (JSON) or .axb (binary) file and parses
+// it into an Axon Graph struct, auto-detecting the format from the extension.
+func LoadGraphFromFile(filePath string) (*Graph, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -23,17 +28,28 @@ func LoadGraphFromFile(filePath string) (*axon.Graph, error) {
 		return nil, err
 	}
 
-	var graph axon.Graph
-	// Use a custom unmarshaler to handle enums as strings
-	unmarshaler := protojson.UnmarshalOptions{
-		DiscardUnknown: true,
-	}
-	if err := unmarshaler.Unmarshal(bytes, &graph); err != nil {
-		// Fallback for simple JSON in case protojson fails, for robustness.
-		if errJson := json.Unmarshal(bytes, &graph); errJson != nil {
-			return nil, err // Return the original protojson error
-		}
-	}
+	var graph Graph
+	fileExt := filepath.Ext(filePath)
 
-	return &graph, nil
+	switch fileExt {
+	case ".ax":
+		// Handle JSON format
+		unmarshaler := protojson.UnmarshalOptions{
+			DiscardUnknown: true,
+		}
+		if err := unmarshaler.Unmarshal(bytes, &graph); err != nil {
+			return nil, fmt.Errorf("failed to parse .ax (JSON) file: %w", err)
+		}
+		return &graph, nil
+
+	case ".axb":
+		// Handle binary Protobuf format
+		if err := proto.Unmarshal(bytes, &graph); err != nil {
+			return nil, fmt.Errorf("failed to parse .axb (binary) file: %w", err)
+		}
+		return &graph, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported file extension '%s': must be .ax or .axb", fileExt)
+	}
 }
