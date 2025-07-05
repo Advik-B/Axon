@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/Advik-B/Axon/internal/parser"
 	"github.com/Advik-B/Axon/internal/transpiler"
@@ -29,7 +29,7 @@ func main() {
 		log.Fatalf("Error parsing graph file %s: %v", filePath, err)
 	}
 
-	fmt.Printf("Successfully parsed graph: %s\n", graph.Name)
+	fmt.Printf("Successfully parsed graph: %s (%s)\n", graph.Name, graph.Id)
 
 	// 2. Transpile the graph to Go code
 	goCode, err := transpiler.Transpile(graph)
@@ -40,13 +40,13 @@ func main() {
 	fmt.Println("Transpilation successful. Writing to output file...")
 
 	// 3. Write the output to a file
-	outputPath := "out/"
-	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
-		os.Mkdir(outputPath, 0755)
+	outputPath := "out"
+	if err := os.MkdirAll(outputPath, 0755); err != nil {
+		log.Fatalf("Error creating output directory %s: %v", outputPath, err)
 	}
 
-	outputFile := outputPath + "main.go"
-	err = ioutil.WriteFile(outputFile, []byte(goCode), 0644)
+	outputFile := filepath.Join(outputPath, "main.go")
+	err = os.WriteFile(outputFile, []byte(goCode), 0644)
 	if err != nil {
 		log.Fatalf("Error writing to output file %s: %v", outputFile, err)
 	}
