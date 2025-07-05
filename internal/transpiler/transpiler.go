@@ -9,7 +9,6 @@ import (
 
 // Transpile converts an Axon graph into a Go source file string.
 func Transpile(graph *axon.Graph) (string, error) {
-	// State to hold information during transpilation
 	state := &transpilationState{
 		graph:        graph,
 		nodeMap:      make(map[string]*axon.Node),
@@ -24,10 +23,11 @@ func Transpile(graph *axon.Graph) (string, error) {
 		state.nodeMap[node.Id] = node
 	}
 
-	// 2. Determine execution order by topologically sorting the nodes
-	sortedNodes, err := sortNodesByExec(graph)
+	// 2. Validate the graph structure and get the execution order.
+	// This checks for START/END nodes, cycles, dangling paths, and unreachable code.
+	sortedNodes, err := validateAndSortExecGraph(graph, state.nodeMap)
 	if err != nil {
-		return "", fmt.Errorf("failed to determine execution order: %w", err)
+		return "", fmt.Errorf("graph validation failed: %w", err)
 	}
 
 	// 3. Generate the Go code for the body of the main function

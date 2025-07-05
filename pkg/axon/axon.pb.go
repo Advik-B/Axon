@@ -26,12 +26,13 @@ type NodeType int32
 
 const (
 	NodeType_NODE_UNKNOWN NodeType = 0
-	NodeType_START        NodeType = 1 // Entry point for an execution flow.
-	NodeType_CONSTANT     NodeType = 2 // Provides a static value.
-	NodeType_FUNCTION     NodeType = 3 // Calls a built-in or standard library function.
-	NodeType_OPERATOR     NodeType = 4 // Performs a binary operation (e.g., +, -, *).
-	NodeType_CONDITIONAL  NodeType = 5 // An IF statement, directs execution flow.
-	NodeType_LOOP         NodeType = 6 // A FOR loop, directs execution flow.
+	NodeType_START        NodeType = 1 // The entry point for an execution flow.
+	NodeType_END          NodeType = 2 // The termination point for an execution flow.
+	NodeType_CONSTANT     NodeType = 3 // Provides a static value.
+	NodeType_FUNCTION     NodeType = 4 // Calls a Go function (e.g., "fmt.Println").
+	NodeType_OPERATOR     NodeType = 5 // Performs a binary operation (e.g., "+", "==").
+	NodeType_IGNORE       NodeType = 6 // Explicitly discards an input value (like `_` in Go).
+	NodeType_RETURN       NodeType = 7 // Returns a value from the graph's function scope.
 )
 
 // Enum value maps for NodeType.
@@ -39,20 +40,22 @@ var (
 	NodeType_name = map[int32]string{
 		0: "NODE_UNKNOWN",
 		1: "START",
-		2: "CONSTANT",
-		3: "FUNCTION",
-		4: "OPERATOR",
-		5: "CONDITIONAL",
-		6: "LOOP",
+		2: "END",
+		3: "CONSTANT",
+		4: "FUNCTION",
+		5: "OPERATOR",
+		6: "IGNORE",
+		7: "RETURN",
 	}
 	NodeType_value = map[string]int32{
 		"NODE_UNKNOWN": 0,
 		"START":        1,
-		"CONSTANT":     2,
-		"FUNCTION":     3,
-		"OPERATOR":     4,
-		"CONDITIONAL":  5,
-		"LOOP":         6,
+		"END":          2,
+		"CONSTANT":     3,
+		"FUNCTION":     4,
+		"OPERATOR":     5,
+		"IGNORE":       6,
+		"RETURN":       7,
 	}
 )
 
@@ -83,84 +86,88 @@ func (NodeType) EnumDescriptor() ([]byte, []int) {
 	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{0}
 }
 
-// DataType for input/output ports.
-type DataType int32
+// VisualInfo stores the position and dimensions of a node for a GUI.
+// This is ignored by the transpiler.
+type VisualInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	X             float32                `protobuf:"fixed32,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y             float32                `protobuf:"fixed32,2,opt,name=y,proto3" json:"y,omitempty"`
+	Width         float32                `protobuf:"fixed32,3,opt,name=width,proto3" json:"width,omitempty"`
+	Height        float32                `protobuf:"fixed32,4,opt,name=height,proto3" json:"height,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const (
-	DataType_TYPE_UNKNOWN DataType = 0
-	DataType_INTEGER      DataType = 1
-	DataType_FLOAT        DataType = 2
-	DataType_BOOLEAN      DataType = 3
-	DataType_STRING       DataType = 4
-	// Special types
-	DataType_ANY        DataType = 5 // Can connect to any other type (used for fmt.Println, etc.)
-	DataType_ERROR      DataType = 6 // Represents a Go error type.
-	DataType_BYTE_ARRAY DataType = 7 // Represents []byte.
-)
+func (x *VisualInfo) Reset() {
+	*x = VisualInfo{}
+	mi := &file_pkg_axon_axon_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
 
-// Enum value maps for DataType.
-var (
-	DataType_name = map[int32]string{
-		0: "TYPE_UNKNOWN",
-		1: "INTEGER",
-		2: "FLOAT",
-		3: "BOOLEAN",
-		4: "STRING",
-		5: "ANY",
-		6: "ERROR",
-		7: "BYTE_ARRAY",
+func (x *VisualInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VisualInfo) ProtoMessage() {}
+
+func (x *VisualInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_axon_axon_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
 	}
-	DataType_value = map[string]int32{
-		"TYPE_UNKNOWN": 0,
-		"INTEGER":      1,
-		"FLOAT":        2,
-		"BOOLEAN":      3,
-		"STRING":       4,
-		"ANY":          5,
-		"ERROR":        6,
-		"BYTE_ARRAY":   7,
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VisualInfo.ProtoReflect.Descriptor instead.
+func (*VisualInfo) Descriptor() ([]byte, []int) {
+	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *VisualInfo) GetX() float32 {
+	if x != nil {
+		return x.X
 	}
-)
-
-func (x DataType) Enum() *DataType {
-	p := new(DataType)
-	*p = x
-	return p
+	return 0
 }
 
-func (x DataType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+func (x *VisualInfo) GetY() float32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
 }
 
-func (DataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_axon_axon_proto_enumTypes[1].Descriptor()
+func (x *VisualInfo) GetWidth() float32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
 }
 
-func (DataType) Type() protoreflect.EnumType {
-	return &file_pkg_axon_axon_proto_enumTypes[1]
-}
-
-func (x DataType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use DataType.Descriptor instead.
-func (DataType) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{1}
+func (x *VisualInfo) GetHeight() float32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
 }
 
 // Port represents a connection point for data on a node.
 type Port struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                     // The name of the port (e.g., "a", "b", "result").
-	Type          DataType               `protobuf:"varint,2,opt,name=type,proto3,enum=axon.DataType" json:"type,omitempty"` // The data type this port accepts or produces.
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                         // The name of the port (e.g., "a", "result").
+	TypeName      string                 `protobuf:"bytes,2,opt,name=type_name,json=typeName,proto3" json:"type_name,omitempty"` // The Go type this port handles (e.g., "string", "*http.Request").
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Port) Reset() {
 	*x = Port{}
-	mi := &file_pkg_axon_axon_proto_msgTypes[0]
+	mi := &file_pkg_axon_axon_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -172,7 +179,7 @@ func (x *Port) String() string {
 func (*Port) ProtoMessage() {}
 
 func (x *Port) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_axon_axon_proto_msgTypes[0]
+	mi := &file_pkg_axon_axon_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,7 +192,7 @@ func (x *Port) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Port.ProtoReflect.Descriptor instead.
 func (*Port) Descriptor() ([]byte, []int) {
-	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{0}
+	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Port) GetName() string {
@@ -195,11 +202,11 @@ func (x *Port) GetName() string {
 	return ""
 }
 
-func (x *Port) GetType() DataType {
+func (x *Port) GetTypeName() string {
 	if x != nil {
-		return x.Type
+		return x.TypeName
 	}
-	return DataType_TYPE_UNKNOWN
+	return ""
 }
 
 // A Node is the core building block of an Axon graph.
@@ -210,20 +217,22 @@ type Node struct {
 	Label   string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`                   // Human-readable name used for variable naming.
 	Inputs  []*Port                `protobuf:"bytes,4,rep,name=inputs,proto3" json:"inputs,omitempty"`                 // Data input ports.
 	Outputs []*Port                `protobuf:"bytes,5,rep,name=outputs,proto3" json:"outputs,omitempty"`               // Data output ports.
-	// Node-specific configuration.
-	// For CONSTANT: "value" -> "123", "\"hello\"", "true"
-	// For OPERATOR: "op" -> "+", "-", "=="
-	Config map[string]string `protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// For FUNCTION nodes, this specifies the Go function to call.
-	// Example: "fmt.Println", "os.ReadFile", "strings.ToUpper"
-	ImplReference string `protobuf:"bytes,7,opt,name=impl_reference,json=implReference,proto3" json:"impl_reference,omitempty"`
+	// Example: "fmt.Println", "os.ReadFile"
+	ImplReference string `protobuf:"bytes,6,opt,name=impl_reference,json=implReference,proto3" json:"impl_reference,omitempty"`
+	// Node-specific configuration.
+	// For CONSTANT: "value" -> "\"hello\"", "123"
+	// For OPERATOR: "op" -> "+", "-"
+	Config map[string]string `protobuf:"bytes,7,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Optional visual information.
+	VisualInfo    *VisualInfo `protobuf:"bytes,8,opt,name=visual_info,json=visualInfo,proto3" json:"visual_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Node) Reset() {
 	*x = Node{}
-	mi := &file_pkg_axon_axon_proto_msgTypes[1]
+	mi := &file_pkg_axon_axon_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -235,7 +244,7 @@ func (x *Node) String() string {
 func (*Node) ProtoMessage() {}
 
 func (x *Node) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_axon_axon_proto_msgTypes[1]
+	mi := &file_pkg_axon_axon_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -248,7 +257,7 @@ func (x *Node) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Node.ProtoReflect.Descriptor instead.
 func (*Node) Descriptor() ([]byte, []int) {
-	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{1}
+	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Node) GetId() string {
@@ -286,13 +295,6 @@ func (x *Node) GetOutputs() []*Port {
 	return nil
 }
 
-func (x *Node) GetConfig() map[string]string {
-	if x != nil {
-		return x.Config
-	}
-	return nil
-}
-
 func (x *Node) GetImplReference() string {
 	if x != nil {
 		return x.ImplReference
@@ -300,8 +302,21 @@ func (x *Node) GetImplReference() string {
 	return ""
 }
 
+func (x *Node) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *Node) GetVisualInfo() *VisualInfo {
+	if x != nil {
+		return x.VisualInfo
+	}
+	return nil
+}
+
 // DataEdge represents a data dependency between two nodes.
-// It connects an output port of one node to an input port of another.
 type DataEdge struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FromNodeId    string                 `protobuf:"bytes,1,opt,name=from_node_id,json=fromNodeId,proto3" json:"from_node_id,omitempty"`
@@ -314,7 +329,7 @@ type DataEdge struct {
 
 func (x *DataEdge) Reset() {
 	*x = DataEdge{}
-	mi := &file_pkg_axon_axon_proto_msgTypes[2]
+	mi := &file_pkg_axon_axon_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +341,7 @@ func (x *DataEdge) String() string {
 func (*DataEdge) ProtoMessage() {}
 
 func (x *DataEdge) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_axon_axon_proto_msgTypes[2]
+	mi := &file_pkg_axon_axon_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +354,7 @@ func (x *DataEdge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataEdge.ProtoReflect.Descriptor instead.
 func (*DataEdge) Descriptor() ([]byte, []int) {
-	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{2}
+	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *DataEdge) GetFromNodeId() string {
@@ -371,7 +386,6 @@ func (x *DataEdge) GetToPort() string {
 }
 
 // ExecEdge represents an execution dependency between two nodes.
-// It dictates the order of operations.
 type ExecEdge struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FromNodeId    string                 `protobuf:"bytes,1,opt,name=from_node_id,json=fromNodeId,proto3" json:"from_node_id,omitempty"`
@@ -382,7 +396,7 @@ type ExecEdge struct {
 
 func (x *ExecEdge) Reset() {
 	*x = ExecEdge{}
-	mi := &file_pkg_axon_axon_proto_msgTypes[3]
+	mi := &file_pkg_axon_axon_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -394,7 +408,7 @@ func (x *ExecEdge) String() string {
 func (*ExecEdge) ProtoMessage() {}
 
 func (x *ExecEdge) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_axon_axon_proto_msgTypes[3]
+	mi := &file_pkg_axon_axon_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -407,7 +421,7 @@ func (x *ExecEdge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecEdge.ProtoReflect.Descriptor instead.
 func (*ExecEdge) Descriptor() ([]byte, []int) {
-	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{3}
+	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ExecEdge) GetFromNodeId() string {
@@ -438,7 +452,7 @@ type Graph struct {
 
 func (x *Graph) Reset() {
 	*x = Graph{}
-	mi := &file_pkg_axon_axon_proto_msgTypes[4]
+	mi := &file_pkg_axon_axon_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -450,7 +464,7 @@ func (x *Graph) String() string {
 func (*Graph) ProtoMessage() {}
 
 func (x *Graph) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_axon_axon_proto_msgTypes[4]
+	mi := &file_pkg_axon_axon_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,7 +477,7 @@ func (x *Graph) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Graph.ProtoReflect.Descriptor instead.
 func (*Graph) Descriptor() ([]byte, []int) {
-	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{4}
+	return file_pkg_axon_axon_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Graph) GetId() string {
@@ -505,10 +519,16 @@ var File_pkg_axon_axon_proto protoreflect.FileDescriptor
 
 const file_pkg_axon_axon_proto_rawDesc = "" +
 	"\n" +
-	"\x13pkg/axon/axon.proto\x12\x04axon\">\n" +
+	"\x13pkg/axon/axon.proto\x12\x04axon\"V\n" +
+	"\n" +
+	"VisualInfo\x12\f\n" +
+	"\x01x\x18\x01 \x01(\x02R\x01x\x12\f\n" +
+	"\x01y\x18\x02 \x01(\x02R\x01y\x12\x14\n" +
+	"\x05width\x18\x03 \x01(\x02R\x05width\x12\x16\n" +
+	"\x06height\x18\x04 \x01(\x02R\x06height\"7\n" +
 	"\x04Port\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
-	"\x04type\x18\x02 \x01(\x0e2\x0e.axon.DataTypeR\x04type\"\xac\x02\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
+	"\ttype_name\x18\x02 \x01(\tR\btypeName\"\xdf\x02\n" +
 	"\x04Node\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x0e.axon.NodeTypeR\x04type\x12\x14\n" +
@@ -516,9 +536,11 @@ const file_pkg_axon_axon_proto_rawDesc = "" +
 	"\x06inputs\x18\x04 \x03(\v2\n" +
 	".axon.PortR\x06inputs\x12$\n" +
 	"\aoutputs\x18\x05 \x03(\v2\n" +
-	".axon.PortR\aoutputs\x12.\n" +
-	"\x06config\x18\x06 \x03(\v2\x16.axon.Node.ConfigEntryR\x06config\x12%\n" +
-	"\x0eimpl_reference\x18\a \x01(\tR\rimplReference\x1a9\n" +
+	".axon.PortR\aoutputs\x12%\n" +
+	"\x0eimpl_reference\x18\x06 \x01(\tR\rimplReference\x12.\n" +
+	"\x06config\x18\a \x03(\v2\x16.axon.Node.ConfigEntryR\x06config\x121\n" +
+	"\vvisual_info\x18\b \x01(\v2\x10.axon.VisualInfoR\n" +
+	"visualInfo\x1a9\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x80\x01\n" +
@@ -542,26 +564,18 @@ const file_pkg_axon_axon_proto_rawDesc = "" +
 	"\n" +
 	"data_edges\x18\x04 \x03(\v2\x0e.axon.DataEdgeR\tdataEdges\x12-\n" +
 	"\n" +
-	"exec_edges\x18\x05 \x03(\v2\x0e.axon.ExecEdgeR\texecEdges*l\n" +
+	"exec_edges\x18\x05 \x03(\v2\x0e.axon.ExecEdgeR\texecEdges*r\n" +
 	"\bNodeType\x12\x10\n" +
 	"\fNODE_UNKNOWN\x10\x00\x12\t\n" +
-	"\x05START\x10\x01\x12\f\n" +
-	"\bCONSTANT\x10\x02\x12\f\n" +
-	"\bFUNCTION\x10\x03\x12\f\n" +
-	"\bOPERATOR\x10\x04\x12\x0f\n" +
-	"\vCONDITIONAL\x10\x05\x12\b\n" +
-	"\x04LOOP\x10\x06*q\n" +
-	"\bDataType\x12\x10\n" +
-	"\fTYPE_UNKNOWN\x10\x00\x12\v\n" +
-	"\aINTEGER\x10\x01\x12\t\n" +
-	"\x05FLOAT\x10\x02\x12\v\n" +
-	"\aBOOLEAN\x10\x03\x12\n" +
+	"\x05START\x10\x01\x12\a\n" +
+	"\x03END\x10\x02\x12\f\n" +
+	"\bCONSTANT\x10\x03\x12\f\n" +
+	"\bFUNCTION\x10\x04\x12\f\n" +
+	"\bOPERATOR\x10\x05\x12\n" +
 	"\n" +
-	"\x06STRING\x10\x04\x12\a\n" +
-	"\x03ANY\x10\x05\x12\t\n" +
-	"\x05ERROR\x10\x06\x12\x0e\n" +
+	"\x06IGNORE\x10\x06\x12\n" +
 	"\n" +
-	"BYTE_ARRAY\x10\aB\"Z github.com/Advik-B/Axon/pkg/axonb\x06proto3"
+	"\x06RETURN\x10\aB\"Z github.com/Advik-B/Axon/pkg/axonb\x06proto3"
 
 var (
 	file_pkg_axon_axon_proto_rawDescOnce sync.Once
@@ -575,24 +589,24 @@ func file_pkg_axon_axon_proto_rawDescGZIP() []byte {
 	return file_pkg_axon_axon_proto_rawDescData
 }
 
-var file_pkg_axon_axon_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_pkg_axon_axon_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_pkg_axon_axon_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_pkg_axon_axon_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_pkg_axon_axon_proto_goTypes = []any{
-	(NodeType)(0),    // 0: axon.NodeType
-	(DataType)(0),    // 1: axon.DataType
-	(*Port)(nil),     // 2: axon.Port
-	(*Node)(nil),     // 3: axon.Node
-	(*DataEdge)(nil), // 4: axon.DataEdge
-	(*ExecEdge)(nil), // 5: axon.ExecEdge
-	(*Graph)(nil),    // 6: axon.Graph
-	nil,              // 7: axon.Node.ConfigEntry
+	(NodeType)(0),      // 0: axon.NodeType
+	(*VisualInfo)(nil), // 1: axon.VisualInfo
+	(*Port)(nil),       // 2: axon.Port
+	(*Node)(nil),       // 3: axon.Node
+	(*DataEdge)(nil),   // 4: axon.DataEdge
+	(*ExecEdge)(nil),   // 5: axon.ExecEdge
+	(*Graph)(nil),      // 6: axon.Graph
+	nil,                // 7: axon.Node.ConfigEntry
 }
 var file_pkg_axon_axon_proto_depIdxs = []int32{
-	1, // 0: axon.Port.type:type_name -> axon.DataType
-	0, // 1: axon.Node.type:type_name -> axon.NodeType
-	2, // 2: axon.Node.inputs:type_name -> axon.Port
-	2, // 3: axon.Node.outputs:type_name -> axon.Port
-	7, // 4: axon.Node.config:type_name -> axon.Node.ConfigEntry
+	0, // 0: axon.Node.type:type_name -> axon.NodeType
+	2, // 1: axon.Node.inputs:type_name -> axon.Port
+	2, // 2: axon.Node.outputs:type_name -> axon.Port
+	7, // 3: axon.Node.config:type_name -> axon.Node.ConfigEntry
+	1, // 4: axon.Node.visual_info:type_name -> axon.VisualInfo
 	3, // 5: axon.Graph.nodes:type_name -> axon.Node
 	4, // 6: axon.Graph.data_edges:type_name -> axon.DataEdge
 	5, // 7: axon.Graph.exec_edges:type_name -> axon.ExecEdge
@@ -613,8 +627,8 @@ func file_pkg_axon_axon_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_axon_axon_proto_rawDesc), len(file_pkg_axon_axon_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   6,
+			NumEnums:      1,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

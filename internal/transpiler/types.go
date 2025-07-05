@@ -2,9 +2,7 @@ package transpiler
 
 import (
 	"fmt"
-	"path"
 	"strings"
-
 	"github.com/Advik-B/Axon/pkg/axon"
 )
 
@@ -21,20 +19,36 @@ type importManager struct {
 	imports map[string]struct{} // Using a map as a set for unique imports.
 }
 
-// addImportFromReference parses a Go function reference (e.g., "fmt.Println")
-// and adds the required package ("fmt") to the list of imports.
-// It returns the full function reference.
-func (im *importManager) addImportFromReference(ref string) (string, error) {
-	parts := strings.Split(ref, ".")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid implementation reference '%s'; expected format 'package.Function'", ref)
+// parsePackagePath extracts a valid Go package path from a type string.
+// Examples:
+// "string" -> ""
+// "*http.Request" -> "net/http"
+// "[]*os.File" -> "os"
+// "map[string]io.Reader" -> "io"
+func parsePackagePath(typeStr string) string {
+	// Clean up common prefixes
+	typeStr = strings.TrimLeft(typeStr, "[]*& ")
+	// Find the last dot, which separates the package from the type
+	lastDot := strings.LastIndex(typeStr, ".")
+	if lastDot == -1 {
+		return "" // It's a built-in type (string, int, etc.)
 	}
-	pkgPath := findStdLibPackagePath(parts[0])
-	if pkgPath == "" {
-		return "", fmt.Errorf("package '%s' not found in standard library map", parts[0])
+	// The potential package path is everything before the last dot
+	potentialPath := typeStr[:lastDot]
+	// If there's a space, it's likely a complex type like `map[string]io.Reader`
+	lastSpace := strings.LastIndex(potentialPath, " ")
+	if lastSpace != -1 {
+		potentialPath = potentialPath[lastSpace+1:]
 	}
-	im.imports[pkgPath] = struct{}{}
-	return ref, nil
+	return potentialPath
+}
+
+// addImportFromType parses a Go type string and adds its package to the imports.
+func (im *importManager) addImportFromType(typeStr string) {
+	pkgPath := parsePackagePath(typeStr)
+	if pkgPath != "" {
+		im.imports[pkgPath] = struct{}{}
+	}
 }
 
 // generateImportBlock creates the `import (...)` block for the final Go file.
@@ -47,7 +61,6 @@ func (im *importManager) generateImportBlock() string {
 			return fmt.Sprintf("import \"%s\"\n", pkg)
 		}
 	}
-
 	var sb strings.Builder
 	sb.WriteString("import (\n")
 	for pkg := range im.imports {
@@ -55,26 +68,4 @@ func (im *importManager) generateImportBlock() string {
 	}
 	sb.WriteString(")\n")
 	return sb.String()
-}
-
-// A simple map to find full package paths for common stdlib packages.
-// This can be expanded as needed.
-var stdLibPackageMap = map[string]string{
-	"fmt":     "fmt",
-	"os":      "os",
-	"strings": "strings",
-	"io":      "io",
-	"http":    "net/http",
-	"json":    "encoding/json",
-	"math":    "math",
-	"rand":    "math/rand",
-	"time":    "time",
-}
-
-func findStdLibPackagePath(pkgName string) string {
-	if p, ok := stdLibPackageMap[pkgName]; ok {
-		return p
-	}
-	// Fallback for nested packages like `http.MethodGet`
-	return path.Dir(pkgName)
 }

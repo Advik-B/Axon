@@ -7,31 +7,28 @@ option go_package = "github.com/Advik-B/Axon/pkg/axon";
 // NodeType defines the behavior of a node.
 enum NodeType {
     NODE_UNKNOWN = 0;
-    START = 1;          // Entry point for an execution flow.
-    CONSTANT = 2;       // Provides a static value.
-    FUNCTION = 3;       // Calls a built-in or standard library function.
-    OPERATOR = 4;       // Performs a binary operation (e.g., +, -, *).
-    CONDITIONAL = 5;    // An IF statement, directs execution flow.
-    LOOP = 6;           // A FOR loop, directs execution flow.
+    START = 1;          // The entry point for an execution flow.
+    END = 2;            // The termination point for an execution flow.
+    CONSTANT = 3;       // Provides a static value.
+    FUNCTION = 4;       // Calls a Go function (e.g., "fmt.Println").
+    OPERATOR = 5;       // Performs a binary operation (e.g., "+", "==").
+    IGNORE = 6;         // Explicitly discards an input value (like `_` in Go).
+    RETURN = 7;         // Returns a value from the graph's function scope.
 }
 
-// DataType for input/output ports.
-enum DataType {
-    TYPE_UNKNOWN = 0;
-    INTEGER = 1;
-    FLOAT = 2;
-    BOOLEAN = 3;
-    STRING = 4;
-    // Special types
-    ANY = 5;            // Can connect to any other type (used for fmt.Println, etc.)
-    ERROR = 6;          // Represents a Go error type.
-    BYTE_ARRAY = 7;     // Represents []byte.
+// VisualInfo stores the position and dimensions of a node for a GUI.
+// This is ignored by the transpiler.
+message VisualInfo {
+    float x = 1;
+    float y = 2;
+    float width = 3;
+    float height = 4;
 }
 
 // Port represents a connection point for data on a node.
 message Port {
-    string name = 1;        // The name of the port (e.g., "a", "b", "result").
-    DataType type = 2;      // The data type this port accepts or produces.
+    string name = 1;      // The name of the port (e.g., "a", "result").
+    string type_name = 2; // The Go type this port handles (e.g., "string", "*http.Request").
 }
 
 // A Node is the core building block of an Axon graph.
@@ -42,18 +39,20 @@ message Node {
     repeated Port inputs = 4;       // Data input ports.
     repeated Port outputs = 5;      // Data output ports.
 
-    // Node-specific configuration.
-    // For CONSTANT: "value" -> "123", "\"hello\"", "true"
-    // For OPERATOR: "op" -> "+", "-", "=="
-    map<string, string> config = 6;
-
     // For FUNCTION nodes, this specifies the Go function to call.
-    // Example: "fmt.Println", "os.ReadFile", "strings.ToUpper"
-    string impl_reference = 7;
+    // Example: "fmt.Println", "os.ReadFile"
+    string impl_reference = 6;
+
+    // Node-specific configuration.
+    // For CONSTANT: "value" -> "\"hello\"", "123"
+    // For OPERATOR: "op" -> "+", "-"
+    map<string, string> config = 7;
+
+    // Optional visual information.
+    VisualInfo visual_info = 8;
 }
 
 // DataEdge represents a data dependency between two nodes.
-// It connects an output port of one node to an input port of another.
 message DataEdge {
     string from_node_id = 1;
     string from_port = 2;
@@ -62,7 +61,6 @@ message DataEdge {
 }
 
 // ExecEdge represents an execution dependency between two nodes.
-// It dictates the order of operations.
 message ExecEdge {
     string from_node_id = 1;
     string to_node_id = 2;

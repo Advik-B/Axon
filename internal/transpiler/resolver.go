@@ -2,114 +2,110 @@ package transpiler
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Advik-B/Axon/pkg/axon"
 )
 
-// sortNodesByExec performs a topological sort on the graph using execution edges.
-// This determines the precise order of operations.
-func sortNodesByExec(graph *axon.Graph) ([]*axon.Node, error) {
-	nodeMap := make(map[string]*axon.Node)
-	for _, node := range graph.Nodes {
-		nodeMap[node.Id] = node
-	}
-
+// validateAndSortExecGraph ensures the graph is well-formed and returns a valid execution order.
+// It checks for:
+// 1. At least one START node.
+// 2. All execution paths from a START node must eventually reach an END node.
+// 3. All nodes are reachable from a START node (no dead code).
+func validateAndSortExecGraph(graph *axon.Graph, nodeMap map[string]*axon.Node) ([]*axon.Node, error) {
 	adjList := make(map[string][]string)
-	inDegree := make(map[string]int)
+	revAdjList := make(map[string][]string) // For reverse traversal from END nodes
+	var startNodes []*axon.Node
 
-	// Initialize every node
 	for _, node := range graph.Nodes {
-		inDegree[node.Id] = 0
 		adjList[node.Id] = []string{}
+		revAdjList[node.Id] = []string{}
+		if node.Type == axon.NodeType_START {
+			startNodes = append(startNodes, node)
+		}
+	}
+	if len(startNodes) == 0 && len(graph.Nodes) > 0 {
+		return nil, fmt.Errorf("no START node found in graph")
 	}
 
-	// Build adjacency list and in-degree map from exec edges
 	for _, edge := range graph.ExecEdges {
 		adjList[edge.FromNodeId] = append(adjList[edge.FromNodeId], edge.ToNodeId)
-		inDegree[edge.ToNodeId]++
+		revAdjList[edge.ToNodeId] = append(revAdjList[edge.ToNodeId], edge.FromNodeId)
 	}
 
-	// Find all nodes with an in-degree of 0. These are the starting points.
-	// A valid graph should have one START node with an in-degree of 0.
-	var queue []string
-	for id, degree := range inDegree {
-		if degree == 0 {
-			queue = append(queue, id)
-		}
-	}
-
-	if len(queue) == 0 && len(graph.Nodes) > 0 {
-		return nil, fmt.Errorf("execution graph has a cycle or no entry point (a START node with no incoming exec edges)")
-	}
-
+	// DFS to find all reachable nodes and check for dangling paths
 	var sortedNodes []*axon.Node
-	for len(queue) > 0 {
-		nodeID := queue[0]
-		queue = queue[1:]
+	visited := make(map[string]bool)
+	path := make(map[string]bool) // For cycle detection
 
-		node, exists := nodeMap[nodeID]
-		if !exists {
-			return nil, fmt.Errorf("node with id '%s' from exec edge not found in graph", nodeID)
+	var dfs func(nodeID string) error
+	dfs = func(nodeID string) error {
+		if path[nodeID] {
+			return fmt.Errorf("cycle detected in execution graph involving node %s", nodeID)
 		}
-		sortedNodes = append(sortedNodes, node)
+		if visited[nodeID] {
+			return nil
+		}
 
-		for _, neighborID := range adjList[nodeID] {
-			inDegree[neighborID]--
-			if inDegree[neighborID] == 0 {
-				queue = append(queue, neighborID)
+		path[nodeID] = true
+		visited[nodeID] = true
+
+		node := nodeMap[nodeID]
+		if node.Type == axon.NodeType_END {
+			delete(path, nodeID)
+			sortedNodes = append(sortedNodes, node)
+			return nil // Valid termination
+		}
+
+		successors := adjList[nodeID]
+		if len(successors) == 0 {
+			return fmt.Errorf("dangling execution path at node %s ('%s'). All paths must terminate at an END node", node.Id, node.Label)
+		}
+
+		for _, neighborID := range successors {
+			if err := dfs(neighborID); err != nil {
+				return err
 			}
 		}
+
+		delete(path, nodeID)
+		// Prepend node to get topological sort order
+		sortedNodes = append([]*axon.Node{node}, sortedNodes...)
+		return nil
 	}
 
-	if len(sortedNodes) != len(graph.Nodes) {
-		return nil, fmt.Errorf("cycle detected in execution graph, not all nodes could be reached")
+	for _, startNode := range startNodes {
+		if err := dfs(startNode.Id); err != nil {
+			return nil, err
+		}
+	}
+
+	// Check for unreachable nodes (nodes that exist but weren't visited)
+	if len(visited) != len(graph.Nodes) {
+		var unreachable []string
+		for _, node := range graph.Nodes {
+			if !visited[node.Id] {
+				unreachable = append(unreachable, fmt.Sprintf("'%s' (%s)", node.Label, node.Id))
+			}
+		}
+		return nil, fmt.Errorf("unreachable nodes detected (dead code): %s", strings.Join(unreachable, ", "))
 	}
 
 	return sortedNodes, nil
 }
 
-// findSourceEdge finds the edge that connects to a given node's input port.
-func findSourceEdge(allEdges []*axon.DataEdge, toNodeID, toPortName string) (*axon.DataEdge, error) {
-	for _, edge := range allEdges {
-		if edge.ToNodeId == toNodeID && edge.ToPort == toPortName {
-			return edge, nil
-		}
-	}
-	return nil, fmt.Errorf("no data edge found connecting to %s.%s", toNodeID, toPortName)
-}
-
 // findSourceVar finds the Go variable name connected to a specific input port of a node.
 func findSourceVar(state *transpilationState, toNodeID, toPortName string) (string, error) {
-	edge, err := findSourceEdge(state.graph.DataEdges, toNodeID, toPortName)
-	if err != nil {
-		return "", err
-	}
-
-	// The source key is a unique identifier for an output port.
-	sourceKey := fmt.Sprintf("%s.%s", edge.FromNodeId, edge.FromPort)
-	if varName, ok := state.outputVarMap[sourceKey]; ok {
-		return varName, nil
-	}
-
-	// If the variable is not in the map, it means it's a constant that hasn't been transpiled yet.
-	// We must generate its code on-demand.
-	fromNode := state.nodeMap[edge.FromNodeId]
-	if fromNode.Type == axon.NodeType_CONSTANT {
-		code, err := generateConstant(state, fromNode)
-		if err != nil {
-			return "", err
-		}
-		// This is a bit of a hack: we should ideally process constants first.
-		// For now, we prepend its code (which won't work). A better solution requires
-		// a multi-pass transpiler or sorting by data dependency first.
-		// For now, we just rely on the map being populated correctly.
-		_ = code // We just needed to populate the map.
-		if varName, ok := state.outputVarMap[sourceKey]; ok {
-			return varName, nil
+	for _, edge := range state.graph.DataEdges {
+		if edge.ToNodeId == toNodeID && edge.ToPort == toPortName {
+			sourceKey := fmt.Sprintf("%s.%s", edge.FromNodeId, edge.FromPort)
+			if varName, ok := state.outputVarMap[sourceKey]; ok {
+				return varName, nil
+			}
+			return "", fmt.Errorf("unresolved source variable for %s.%s (source key %s). This may indicate a flaw in the execution order", toNodeID, toPortName, sourceKey)
 		}
 	}
-
-	return "", fmt.Errorf("no source variable found for %s.%s (source key %s)", toNodeID, toPortName, sourceKey)
+	return "", fmt.Errorf("no data edge found connecting to %s.%s", toNodeID, toPortName)
 }
 
 // isOutputUsed checks if a specific output port is connected to any other node.

@@ -11,13 +11,19 @@ import (
 func generateNodeCode(state *transpilationState, node *axon.Node) (string, error) {
 	switch node.Type {
 	case axon.NodeType_START:
-		return "\t// Execution starts\n", nil // Start node is a marker, no code needed
+		return "\t// Execution starts\n", nil
+	case axon.NodeType_END:
+		return "\t// Execution ends\n", nil
+	case axon.NodeType_IGNORE:
+		return "", nil // IGNORE node has no code output; its existence is checked by its source
 	case axon.NodeType_CONSTANT:
 		return generateConstant(state, node)
 	case axon.NodeType_OPERATOR:
 		return generateOperator(state, node)
 	case axon.NodeType_FUNCTION:
 		return generateFunction(state, node)
+	case axon.NodeType_RETURN:
+		return generateReturn(state, node)
 	default:
 		return fmt.Sprintf("\t// Node type '%s' not implemented for node '%s'\n", node.Type, node.Id), nil
 	}
@@ -30,17 +36,18 @@ func generateConstant(state *transpilationState, node *axon.Node) (string, error
 		return "", fmt.Errorf("constant node %s has no 'value' in config", node.Id)
 	}
 	if len(node.Outputs) == 0 {
-		return "", fmt.Errorf("constant node %s must have at least one output port", node.Id)
+		return "", fmt.Errorf("constant node %s must have an output port", node.Id)
 	}
 
-	// The variable name is the node's label.
 	varName := node.Label
-	// The output port is typically named "out".
-	outputPortName := node.Outputs[0].Name
+	outputPort := node.Outputs[0]
+	state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, outputPort.Name)] = varName
 
-	// Register the output variable so other nodes can find it.
-	state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, outputPortName)] = varName
-
+	// Use type information if available, otherwise let Go infer.
+	if outputPort.TypeName != "" {
+		state.importManager.addImportFromType(outputPort.TypeName)
+		return fmt.Sprintf("\tvar %s %s = %s\n", varName, outputPort.TypeName, val), nil
+	}
 	return fmt.Sprintf("\t%s := %s\n", varName, val), nil
 }
 
@@ -50,8 +57,6 @@ func generateOperator(state *transpilationState, node *axon.Node) (string, error
 	if !ok {
 		return "", fmt.Errorf("operator node %s has no 'op' in config", node.Id)
 	}
-
-	// Find the variable names for the inputs "a" and "b".
 	inputA, errA := findSourceVar(state, node.Id, "a")
 	inputB, errB := findSourceVar(state, node.Id, "b")
 	if errA != nil || errB != nil {
@@ -65,75 +70,76 @@ func generateOperator(state *transpilationState, node *axon.Node) (string, error
 	return fmt.Sprintf("\t%s := %s %s %s\n", varName, inputA, op, inputB), nil
 }
 
-// generateFunction generates code for a FUNCTION node. Example: `data, err := os.ReadFile(path)`
+// generateFunction enforces explicit error handling.
 func generateFunction(state *transpilationState, node *axon.Node) (string, error) {
 	if node.ImplReference == "" {
 		return "", fmt.Errorf("function node %s is missing 'impl_reference'", node.Id)
 	}
-
-	// Parse "pkg.FuncName" and add "pkg" to imports
-	funcName, err := state.importManager.addImportFromReference(node.ImplReference)
-	if err != nil {
-		return "", err
-	}
+	state.importManager.addImportFromType(node.ImplReference)
 
 	// Resolve all input arguments
 	var args []string
 	for _, inputPort := range node.Inputs {
 		arg, err := findSourceVar(state, node.Id, inputPort.Name)
 		if err != nil {
-			return "", fmt.Errorf("could not resolve input '%s' for function node %s: %w", inputPort.Name, node.Id, err)
+			return "", fmt.Errorf("could not resolve input '%s' for func %s: %w", inputPort.Name, node.Id, err)
 		}
-
-		// **FIXED BLOCK**: This section now correctly checks the source node's output type
-		// and applies a type cast if necessary (e.g., []byte -> string).
-		edge, err := findSourceEdge(state.graph.DataEdges, node.Id, inputPort.Name)
-		if err == nil { // If we found the connecting edge
-			sourceNode := state.nodeMap[edge.FromNodeId]
-			if sourceNode != nil {
-				// Find the specific output port on the source node to get its type
-				var sourcePortType axon.DataType
-				for _, p := range sourceNode.Outputs {
-					if p.Name == edge.FromPort {
-						sourcePortType = p.Type
-						break
-					}
-				}
-
-				// If source is BYTE_ARRAY and the function expects a string, perform the cast.
-				// This is a simple heuristic that can be expanded.
-				if sourcePortType == axon.DataType_BYTE_ARRAY && (strings.HasSuffix(funcName, ".ToUpper") || strings.HasSuffix(funcName, ".ToLower")) {
-					arg = fmt.Sprintf("string(%s)", arg)
-				}
-			}
-		}
-		
 		args = append(args, arg)
 	}
 	argString := strings.Join(args, ", ")
 
-	// Prepare output variables
+	// Prepare output variables and enforce explicit ignore
 	var outputVars []string
 	for i, outputPort := range node.Outputs {
-		// Use node label with index for multiple outputs, e.g., `fileContents0`, `fileContents1`
-		varName := node.Label
-		if len(node.Outputs) > 1 {
-			varName = fmt.Sprintf("%s%d", node.Label, i)
+		varName := fmt.Sprintf("%s%d", node.Label, i)
+		if len(node.Outputs) == 1 {
+			varName = node.Label
 		}
-		// Don't create a var for the error if it's not used by another node.
-		if outputPort.Type == axon.DataType_ERROR && !isOutputUsed(state.graph, node.Id, outputPort.Name) {
-			varName = "_"
+
+		if !isOutputUsed(state.graph, node.Id, outputPort.Name) {
+			return "", fmt.Errorf("output '%s' of function node '%s' is not used or ignored. Connect it to another node or an IGNORE node", outputPort.Name, node.Label)
 		}
-		outputVars = append(outputVars, varName)
-		// Register the output variable for other nodes to use
+
+		// Check if the output is connected to an IGNORE node
+		isIgnored := false
+		for _, edge := range state.graph.DataEdges {
+			if edge.FromNodeId == node.Id && edge.FromPort == outputPort.Name {
+				if targetNode, ok := state.nodeMap[edge.ToNodeId]; ok && targetNode.Type == axon.NodeType_IGNORE {
+					isIgnored = true
+					break
+				}
+			}
+		}
+
+		if isIgnored {
+			outputVars = append(outputVars, "_")
+		} else {
+			outputVars = append(outputVars, varName)
+		}
 		state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, outputPort.Name)] = varName
 	}
-	outputString := strings.Join(outputVars, ", ")
 
-	// Assemble the final line of code
+	outputString := strings.Join(outputVars, ", ")
+	funcName := strings.Replace(node.ImplReference, "/", ".", -1) // Simplify for codegen
+
 	if len(outputVars) > 0 {
 		return fmt.Sprintf("\t%s := %s(%s)\n", outputString, funcName, argString), nil
-	} else {
-		return fmt.Sprintf("\t%s(%s)\n", funcName, argString), nil
 	}
+	return fmt.Sprintf("\t%s(%s)\n", funcName, argString), nil
+}
+
+// generateReturn generates a return statement.
+func generateReturn(state *transpilationState, node *axon.Node) (string, error) {
+	if len(node.Inputs) == 0 {
+		return "\treturn\n", nil
+	}
+	var returnVars []string
+	for _, inputPort := range node.Inputs {
+		varName, err := findSourceVar(state, node.Id, inputPort.Name)
+		if err != nil {
+			return "", fmt.Errorf("could not find source for RETURN node input '%s': %w", inputPort.Name, err)
+		}
+		returnVars = append(returnVars, varName)
+	}
+	return fmt.Sprintf("\treturn %s\n", strings.Join(returnVars, ", ")), nil
 }
