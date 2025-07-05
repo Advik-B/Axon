@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package axon;
 
-// option go_package = "Axion";
+option go_package = "pkg/axon";
 
 // Node types represent kinds of blocks in the visual language.
 enum NodeType {
