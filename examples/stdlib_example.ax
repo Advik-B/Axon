@@ -1,0 +1,54 @@
+{
+  "id": "stdlib-example",
+  "name": "Standard Library Demo",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "label": "Start"
+    },
+    {
+      "id": "filepath",
+      "type": "CONSTANT",
+      "label": "filePath",
+      "outputs": [{ "name": "out", "type": "STRING" }],
+      "config": { "value": "\"hello.txt\"" }
+    },
+    {
+      "id": "readfile",
+      "type": "FUNCTION",
+      "label": "fileContents",
+      "impl_reference": "os.ReadFile",
+      "inputs": [{ "name": "name", "type": "STRING" }],
+      "outputs": [
+        { "name": "out0", "type": "BYTE_ARRAY" },
+        { "name": "out1", "type": "ERROR" }
+      ]
+    },
+    {
+      "id": "toupper",
+      "type": "FUNCTION",
+      "label": "upperContents",
+      "impl_reference": "strings.ToUpper",
+      "inputs": [{ "name": "s", "type": "STRING" }],
+      "outputs": [{ "name": "out0", "type": "STRING" }]
+    },
+    {
+      "id": "printer",
+      "type": "FUNCTION",
+      "label": "Print",
+      "impl_reference": "fmt.Println",
+      "inputs": [{ "name": "a", "type": "ANY" }]
+    }
+  ],
+  "data_edges": [
+    { "from_node_id": "filepath", "from_port": "out", "to_node_id": "readfile", "to_port": "name" },
+    { "from_node_id": "readfile", "from_port": "out0", "to_node_id": "toupper", "to_port": "s" },
+    { "from_node_id": "toupper", "from_port": "out0", "to_node_id": "printer", "to_port": "a" }
+  ],
+  "exec_edges": [
+    { "from_node_id": "start", "to_node_id": "readfile" },
+    { "from_node_id": "readfile", "to_node_id": "toupper" },
+    { "from_node_id": "toupper", "to_node_id": "printer" }
+  ]
+}
