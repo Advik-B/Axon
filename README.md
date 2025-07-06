@@ -1,9 +1,9 @@
 # ✨ Axon: Visual Programming, For Real.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/b8a5a4c1-d011-4e03-9a37-ea273e48b9c2" alt="Axon Banner" style="width: 40%; height: auto;" />
+  	<img src="https://github.com/user-attachments/assets/dda31dfa-4831-4c99-9279-61c6c8ca1057" alt="Axon Banner" style="width: 40%; height: auto;" />
 	<br/>
-  <sub>Yes, this logo is AI Generated, boo me, Im too poor to hire an artist</sub>
+  	<sub>Yes, this logo is AI Generated, boo me, Im too poor to hire an artist</sub>
 </p>
 
 <p align="center">
