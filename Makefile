@@ -31,7 +31,7 @@ build:
 	@echo "✅ Build complete: $(BINARY_NAME)"
 
 # Run the Axon CLI with arguments passed via the ARGS variable
-# Example: make run ARGS="build examples/stdlib_example.ax"
+# Example: make run ARGS="transpile examples/stdlib_example.ax"
 run:
 	go run $(CMD_PATH) $(ARGS)
 
@@ -64,12 +64,14 @@ help:
 	@echo "Axon Project Makefile"
 	@echo "---------------------"
 	@echo "Available commands:"
-	@echo "  make build          - Compile the Axon CLI."
+	@echo "  make build          - Compile the Axon CLI binary (axon.exe)."
 	@echo "  make run            - Run the CLI. Pass arguments with ARGS=\"...\"."
 	@echo "  make proto          - Regenerate Go code from the .proto file."
-	@echo "  make pack           - Pack a .ax file to a .axb file. Use ARGS=\"path/to/file.ax\"."
-	@echo "  make unpack         - Unpack a .axb file to a .ax file. Use ARGS=\"path/to/file.axb\"."
-	@echo "  make test           - Run all Go tests."
 	@echo "  make clean          - Remove the compiled binary and the '/out' directory."
 	@echo "  make install-deps   - Install Go tools needed for development."
-	@echo "  make help           - Show this help message."
+	@echo ""
+	@echo "Example CLI Usage:"
+	@echo "  axon transpile examples/stdlib_example.ax"
+	@echo "  axon pack examples/stdlib_example.ax"
+	@echo "  axon pack -d examples/stdlib_example.ax"
+	@echo "  axon unpack examples/stdlib_example.axb"
