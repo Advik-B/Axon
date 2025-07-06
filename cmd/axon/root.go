@@ -25,7 +25,7 @@ func Execute() {
 
 func init() {
 	// Add the subcommands to the root command.
-	rootCmd.AddCommand(buildCmd)
+	rootCmd.AddCommand(transpileCmd)
 	rootCmd.AddCommand(packCmd)
 	rootCmd.AddCommand(unpackCmd)
 }
