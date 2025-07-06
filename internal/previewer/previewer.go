@@ -14,18 +14,18 @@ import (
 
 // Previewer is the Ebitengine Game implementation.
 type Previewer struct {
-	graph              *axon.Graph
-	physicsNodes       map[string]*PhysicsNode
-	titleFace          text.Face
-	smallFace          text.Face
-	camX, camY         float64
-	camZoom            float64
-	isDraggingNode     bool
-	isPanning          bool
+	graph                  *axon.Graph
+	physicsNodes           map[string]*PhysicsNode
+	titleFace              text.Face
+	smallFace              text.Face
+	camX, camY             float64
+	camZoom                float64
+	isDraggingNode         bool
+	isPanning              bool
 	dragStartX, dragStartY int
-	draggedNode        *PhysicsNode
-	lastWidth, lastHeight int
-	currentOrientation LayoutOrientation
+	draggedNode            *PhysicsNode
+	lastWidth, lastHeight  int
+	currentOrientation     LayoutOrientation
 }
 
 func NewPreviewer(graph *axon.Graph) (*Previewer, error) {
@@ -93,10 +93,15 @@ func (p *Previewer) Draw(screen *ebiten.Image) {
 			p3 := toNode.InputPorts[edge.ToPort]
 			portType := ""
 			for _, portDef := range fromNode.Outputs {
-				if portDef.Name == edge.FromPort { portType = portDef.TypeName; break }
+				if portDef.Name == edge.FromPort {
+					portType = portDef.TypeName
+					break
+				}
 			}
 			clr, ok := dataTypeColors[portType]
-			if !ok { clr = dataTypeColors["default"] }
+			if !ok {
+				clr = dataTypeColors["default"]
+			}
 			drawBezierCurve(screen, p0, p3, clr, op)
 		}
 	}
@@ -179,8 +184,8 @@ func (p *Previewer) handleDragAndPan() {
 			p.draggedNode.updateRect(p.currentOrientation)
 		} else if p.isPanning {
 			endX, endY := mx, my
-			dx := float64(endX - p.dragStartX) / p.camZoom
-			dy := float64(endY - p.dragStartY) / p.camZoom
+			dx := float64(endX-p.dragStartX) / p.camZoom
+			dy := float64(endY-p.dragStartY) / p.camZoom
 			p.camX -= dx
 			p.camY -= dy
 			p.dragStartX, p.dragStartY = endX, endY
