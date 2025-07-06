@@ -11,25 +11,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// buildCmd represents the build command
-var buildCmd = &cobra.Command{
-	Use:   "build [path/to/graph.ax]",
-	Short: "Transpiles an Axon graph (.ax) file to Go code.",
-	Long: `Build reads an .ax file, validates its structure, and transpiles it into
+// transpileCmd represents the transpile command
+var transpileCmd = &cobra.Command{
+	Use:   "transpile [path/to/graph.ax]",
+	Short: "Transpiles an Axon graph file (.ax, .axb, .axd) to Go code.",
+	Long: `Transpile reads an Axon graph file, validates its structure, and generates
 a runnable Go program located in the 'out' directory.
 
 It checks for valid execution paths, explicit error handling, and type consistency
-before generating the final output.`,
+before generating the final Go code. It can process .ax, .axb, and .axd formats.`,
 	Args: cobra.ExactArgs(1), // Requires exactly one argument: the file path.
-	Run:  runBuild,
+	Run:  runTranspile,
 }
 
-// runBuild contains the sequential logic for the build process.
-func runBuild(cmd *cobra.Command, args []string) {
+// runTranspile contains the sequential logic for the transpilation process.
+func runTranspile(cmd *cobra.Command, args []string) {
 	filePath := args[0]
 	startTime := time.Now()
 
-	fmt.Println("🚀 Starting Axon build process...")
+	fmt.Println("🚀 Starting Axon transpile process...")
 
 	// 1. Validate file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -38,7 +38,7 @@ func runBuild(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("   - Found graph file: %s\n", filePath)
 
-	// 2. Parse the .ax file
+	// 2. Parse the graph file
 	fmt.Println("   - Parsing graph...")
 	graph, err := parser.LoadGraphFromFile(filePath)
 	if err != nil {
@@ -73,6 +73,6 @@ func runBuild(cmd *cobra.Command, args []string) {
 	fmt.Printf("   - Go code written to %s\n", outputFile)
 
 	duration := time.Since(startTime)
-	fmt.Printf("\n✅ Build Succeeded in %.2fs!\n", duration.Seconds())
+	fmt.Printf("\n✅ Transpilation Succeeded in %.2fs!\n", duration.Seconds())
 	fmt.Printf("   Run the output with: go run %s\n", outputFile)
 }
