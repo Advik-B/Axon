@@ -10,18 +10,17 @@ import (
 // generateNodeCode dispatches to the correct code generation function based on node type.
 func generateNodeCode(state *transpilationState, node *axon.Node) (string, error) {
 	switch node.Type {
-	case axon.NodeType_START:
-		return "\t// Execution starts\n", nil
-	case axon.NodeType_END:
-		return "\t// Execution ends\n", nil
+	// Flow control and definition nodes are markers; their logic is handled by the graph validation and scoping.
+	case axon.NodeType_START, axon.NodeType_END, axon.NodeType_FUNC_DEF, axon.NodeType_STRUCT_DEF:
+		return "", nil
 	case axon.NodeType_IGNORE:
-		return "", nil // IGNORE node has no code output; its existence is checked by its source
+		return "", nil // IGNORE has no code output
 	case axon.NodeType_CONSTANT:
-		return generateConstant(state, node)
+		return generateConstant(state, node, false) // false for local scope
 	case axon.NodeType_OPERATOR:
 		return generateOperator(state, node)
 	case axon.NodeType_FUNCTION:
-		return generateFunction(state, node)
+		return generateFunctionCall(state, node)
 	case axon.NodeType_RETURN:
 		return generateReturn(state, node)
 	default:
@@ -29,88 +28,113 @@ func generateNodeCode(state *transpilationState, node *axon.Node) (string, error
 	}
 }
 
-// generateConstant generates code for a CONSTANT node. Example: `myVar := "hello"`
-func generateConstant(state *transpilationState, node *axon.Node) (string, error) {
+// generateStructDef generates a `type ... struct` block.
+func generateStructDef(state *transpilationState, node *axon.Node) (string, error) {
+	var sb strings.Builder
+	sb.WriteString(generateCommentBlock(state, node))
+	sb.WriteString(fmt.Sprintf("type %s struct {\n", node.Label))
+	for _, fieldPort := range node.Inputs {
+		sb.WriteString(fmt.Sprintf("\t%s %s\n", fieldPort.Name, fieldPort.TypeName))
+	}
+	sb.WriteString("}\n\n")
+	return sb.String(), nil
+}
+
+// generateFuncDef generates a complete function or method definition.
+func generateFuncDef(state *transpilationState, entryNode *axon.Node, bodyNodes []*axon.Node) (string, error) {
+	var sb strings.Builder
+	sb.WriteString(generateCommentBlock(state, entryNode))
+
+	var receiver, params, returnTypes []string
+	// Check for a receiver (convention: an input port named 'receiver')
+	for _, port := range entryNode.Inputs {
+		if port.Name == "receiver" {
+			// A short, conventional receiver name like 'u' for 'User'
+			receiverName := strings.ToLower(string(port.TypeName[strings.LastIndex(port.TypeName, "*")+1]))
+			receiver = append(receiver, fmt.Sprintf("(%s %s)", receiverName, port.TypeName))
+			state.outputVarMap[fmt.Sprintf("%s.receiver", entryNode.Id)] = receiverName
+			break
+		}
+	}
+
+	// Function parameters are defined as output ports on the FUNC_DEF node
+	for _, port := range entryNode.Outputs {
+		params = append(params, fmt.Sprintf("%s %s", port.Name, port.TypeName))
+		// Register the parameter as a known variable for the function body
+		state.outputVarMap[fmt.Sprintf("%s.%s", entryNode.Id, port.Name)] = port.Name
+	}
+
+	// Find the RETURN node to determine return types
+	for _, node := range bodyNodes {
+		if node.Type == axon.NodeType_RETURN {
+			for _, port := range node.Inputs {
+				returnTypes = append(returnTypes, port.TypeName)
+			}
+			break // Assume one return node per function for simplicity
+		}
+	}
+
+	returnStr := ""
+	if len(returnTypes) > 0 {
+		if len(returnTypes) > 1 {
+			returnStr = fmt.Sprintf("(%s)", strings.Join(returnTypes, ", "))
+		} else {
+			returnStr = returnTypes[0]
+		}
+	}
+
+	sb.WriteString(fmt.Sprintf("func %s %s(%s) %s {\n", strings.Join(receiver, ""), entryNode.Label, strings.Join(params, ", "), returnStr))
+	bodyCode, err := generateFunctionBody(state, bodyNodes)
+	if err != nil {
+		return "", err
+	}
+	sb.WriteString(bodyCode)
+	sb.WriteString("}\n\n")
+	return sb.String(), nil
+}
+
+// generateConstant generates code for a CONSTANT node.
+func generateConstant(state *transpilationState, node *axon.Node, isGlobal bool) (string, error) {
 	val, ok := node.Config["value"]
 	if !ok {
 		return "", fmt.Errorf("constant node %s has no 'value' in config", node.Id)
 	}
-	if len(node.Outputs) == 0 {
-		return "", fmt.Errorf("constant node %s must have an output port", node.Id)
-	}
-
 	varName := node.Label
-	outputPort := node.Outputs[0]
-	state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, outputPort.Name)] = varName
+	state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, node.Outputs[0].Name)] = varName
 
-	// Use type information if available, otherwise let Go infer.
-	if outputPort.TypeName != "" {
-		state.importManager.addImportFromType(outputPort.TypeName)
-		return fmt.Sprintf("\tvar %s %s = %s\n", varName, outputPort.TypeName, val), nil
+	if isGlobal {
+		return fmt.Sprintf("const %s = %s\n\n", varName, val), nil
 	}
 	return fmt.Sprintf("\t%s := %s\n", varName, val), nil
 }
 
-// generateOperator generates code for an OPERATOR node. Example: `c := a + b`
-func generateOperator(state *transpilationState, node *axon.Node) (string, error) {
-	op, ok := node.Config["op"]
-	if !ok {
-		return "", fmt.Errorf("operator node %s has no 'op' in config", node.Id)
-	}
-	inputA, errA := findSourceVar(state, node.Id, "a")
-	inputB, errB := findSourceVar(state, node.Id, "b")
-	if errA != nil || errB != nil {
-		return "", fmt.Errorf("could not resolve inputs for operator node %s", node.Id)
-	}
-
-	varName := node.Label
-	outputPortName := node.Outputs[0].Name
-	state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, outputPortName)] = varName
-
-	return fmt.Sprintf("\t%s := %s %s %s\n", varName, inputA, op, inputB), nil
-}
-
-// generateFunction enforces explicit error handling.
-func generateFunction(state *transpilationState, node *axon.Node) (string, error) {
+// generateFunctionCall generates a call to a function or method.
+func generateFunctionCall(state *transpilationState, node *axon.Node) (string, error) {
 	if node.ImplReference == "" {
-		return "", fmt.Errorf("function node %s is missing 'impl_reference'", node.Id)
+		return "", fmt.Errorf("function call node %s is missing 'impl_reference'", node.Id)
 	}
-	state.importManager.addImportFromType(node.ImplReference)
 
-	// Resolve all input arguments
 	var args []string
 	for _, inputPort := range node.Inputs {
 		arg, err := findSourceVar(state, node.Id, inputPort.Name)
 		if err != nil {
-			return "", fmt.Errorf("could not resolve input '%s' for func %s: %w", inputPort.Name, node.Id, err)
+			return "", fmt.Errorf("could not resolve input '%s' for func call %s: %w", inputPort.Name, node.Id, err)
 		}
 		args = append(args, arg)
 	}
 	argString := strings.Join(args, ", ")
 
-	// Prepare output variables and enforce explicit ignore
 	var outputVars []string
 	for i, outputPort := range node.Outputs {
-		varName := fmt.Sprintf("%s%d", node.Label, i)
+		if !isOutputUsed(state.graph, node.Id, outputPort.Name) {
+			return "", fmt.Errorf("output '%s' of function call '%s' is not used or explicitly ignored", outputPort.Name, node.Label)
+		}
+		varName := fmt.Sprintf("%s_out%d", node.Label, i)
 		if len(node.Outputs) == 1 {
 			varName = node.Label
 		}
 
-		if !isOutputUsed(state.graph, node.Id, outputPort.Name) {
-			return "", fmt.Errorf("output '%s' of function node '%s' is not used or ignored. Connect it to another node or an IGNORE node", outputPort.Name, node.Label)
-		}
-
-		// Check if the output is connected to an IGNORE node
-		isIgnored := false
-		for _, edge := range state.graph.DataEdges {
-			if edge.FromNodeId == node.Id && edge.FromPort == outputPort.Name {
-				if targetNode, ok := state.nodeMap[edge.ToNodeId]; ok && targetNode.Type == axon.NodeType_IGNORE {
-					isIgnored = true
-					break
-				}
-			}
-		}
-
+		isIgnored := isPortConnectedToIgnore(state, node.Id, outputPort.Name)
 		if isIgnored {
 			outputVars = append(outputVars, "_")
 		} else {
@@ -120,12 +144,43 @@ func generateFunction(state *transpilationState, node *axon.Node) (string, error
 	}
 
 	outputString := strings.Join(outputVars, ", ")
-	funcName := strings.Replace(node.ImplReference, "/", ".", -1) // Simplify for codegen
-
 	if len(outputVars) > 0 {
-		return fmt.Sprintf("\t%s := %s(%s)\n", outputString, funcName, argString), nil
+		return fmt.Sprintf("\t%s := %s(%s)\n", outputString, node.ImplReference, argString), nil
 	}
-	return fmt.Sprintf("\t%s(%s)\n", funcName, argString), nil
+	return fmt.Sprintf("\t%s(%s)\n", node.ImplReference, argString), nil
+}
+
+// generateOperator generates code for a binary operation or struct instantiation.
+func generateOperator(state *transpilationState, node *axon.Node) (string, error) {
+	op, ok := node.Config["op"]
+	if !ok {
+		return "", fmt.Errorf("operator node %s has no 'op' in config", node.Id)
+	}
+
+	// Handle special struct instantiation operator
+	if strings.HasPrefix(op, "&") || strings.HasPrefix(op, "") && 'A' <= op[0] && op[0] <= 'Z' {
+		var fields []string
+		for _, port := range node.Inputs {
+			arg, err := findSourceVar(state, node.Id, port.Name)
+			if err != nil {
+				return "", err
+			}
+			fields = append(fields, arg)
+		}
+		varName := node.Label
+		state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, node.Outputs[0].Name)] = varName
+		return fmt.Sprintf("\t%s := %s{%s}\n", varName, op, strings.Join(fields, ", ")), nil
+	}
+
+	// Handle standard binary operators
+	inputA, errA := findSourceVar(state, node.Id, "a")
+	inputB, errB := findSourceVar(state, node.Id, "b")
+	if errA != nil || errB != nil {
+		return "", fmt.Errorf("could not resolve inputs for operator node %s", node.Id)
+	}
+	varName := node.Label
+	state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, node.Outputs[0].Name)] = varName
+	return fmt.Sprintf("\t%s := %s %s %s\n", varName, inputA, op, inputB), nil
 }
 
 // generateReturn generates a return statement.
@@ -142,4 +197,25 @@ func generateReturn(state *transpilationState, node *axon.Node) (string, error) 
 		returnVars = append(returnVars, varName)
 	}
 	return fmt.Sprintf("\treturn %s\n", strings.Join(returnVars, ", ")), nil
+}
+
+// generateCommentBlock finds comments for a node and formats them.
+func generateCommentBlock(state *transpilationState, node *axon.Node) string {
+	if len(node.CommentIds) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	prefix := "\t" // Assume local scope
+	if node.Type == axon.NodeType_FUNC_DEF || node.Type == axon.NodeType_STRUCT_DEF {
+		prefix = "" // Global scope
+	}
+
+	for _, commentID := range node.CommentIds {
+		if comment, ok := state.commentMap[commentID]; ok {
+			for _, line := range strings.Split(strings.TrimSpace(comment.Content), "\n") {
+				sb.WriteString(fmt.Sprintf("%s// %s\n", prefix, line))
+			}
+		}
+	}
+	return sb.String()
 }
