@@ -2,6 +2,7 @@ package previewer
 
 import (
 	"image"
+	"math"
 
 	"github.com/Advik-B/Axon/pkg/axon"
 )
@@ -15,7 +16,7 @@ const (
 	portSpacing = 20
 )
 
-// LayoutNode stores a node and its calculated position and dimensions.
+// LayoutNode stores a node's visual info, which is updated by the physics simulation.
 type LayoutNode struct {
 	*axon.Node
 	Rect        image.Rectangle
@@ -23,9 +24,31 @@ type LayoutNode struct {
 	OutputPorts map[string]image.Point
 }
 
-// CalculateLayout performs a hierarchical layout of the graph nodes.
-func CalculateLayout(graph *axon.Graph) map[string]*LayoutNode {
-	layoutNodes := make(map[string]*LayoutNode)
+// updateRect recalculates a node's visual rectangle and port positions based on its physics position.
+func (n *PhysicsNode) updateRect() {
+	x, y := int(math.Round(n.Position.X)), int(math.Round(n.Position.Y))
+	n.Rect = image.Rect(x, y, x+nodeWidth, y+nodeHeight)
+
+	// Update port positions relative to the new rect
+	n.InputPorts["exec_in"] = image.Pt(x, y+20)
+	n.OutputPorts["exec_out"] = image.Pt(x+nodeWidth, y+20)
+
+	numInputs := len(n.Node.Inputs)
+	startY_in := y + nodeHeight/2 - (numInputs-1)*portSpacing/2
+	for i, p := range n.Node.Inputs {
+		n.InputPorts[p.Name] = image.Pt(x, startY_in+i*portSpacing)
+	}
+
+	numOutputs := len(n.Node.Outputs)
+	startY_out := y + nodeHeight/2 - (numOutputs-1)*portSpacing/2
+	for i, p := range n.Node.Outputs {
+		n.OutputPorts[p.Name] = image.Pt(x+nodeWidth, startY_out+i*portSpacing)
+	}
+}
+
+// CalculateLayout performs the initial hierarchical layout and returns a map of physics-enabled nodes.
+func CalculateLayout(graph *axon.Graph) map[string]*PhysicsNode {
+	physicsNodes := make(map[string]*PhysicsNode)
 	execAdj := make(map[string][]string)
 	nodeMap := make(map[string]*axon.Node)
 	for _, node := range graph.Nodes {
@@ -78,28 +101,17 @@ func CalculateLayout(graph *axon.Graph) map[string]*LayoutNode {
 
 		for i, node := range layerNodes {
 			x := startX + i*(nodeWidth+hSpacing)
-			rect := image.Rect(x, y, x+nodeWidth, y+nodeHeight)
-			ln := &LayoutNode{
-				Node:        node,
-				Rect:        rect,
-				InputPorts:  make(map[string]image.Point),
-				OutputPorts: make(map[string]image.Point),
+			pn := &PhysicsNode{
+				LayoutNode: &LayoutNode{
+					Node:        node,
+					InputPorts:  make(map[string]image.Point),
+					OutputPorts: make(map[string]image.Point),
+				},
+				Position: Vec2{X: float64(x), Y: float64(y)},
 			}
-
-			// Add conventional ports for execution flow, which aren't in the proto
-			ln.InputPorts["exec_in"] = image.Pt(x, y+20)
-			ln.OutputPorts["exec_out"] = image.Pt(x+nodeWidth, y+20)
-
-			// Calculate data port positions, offset from the execution ports
-			for j, p := range node.Inputs {
-				ln.InputPorts[p.Name] = image.Pt(x, y+nodeHeight/2-len(node.Inputs)*portSpacing/2+(j*portSpacing)+portSpacing/2+10)
-			}
-			for j, p := range node.Outputs {
-				ln.OutputPorts[p.Name] = image.Pt(x+nodeWidth, y+nodeHeight/2-len(node.Outputs)*portSpacing/2+(j*portSpacing)+portSpacing/2+10)
-			}
-			layoutNodes[node.Id] = ln
+			pn.updateRect()
+			physicsNodes[node.Id] = pn
 		}
 	}
-
-	return layoutNodes
+	return physicsNodes
 }
