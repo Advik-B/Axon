@@ -28,4 +28,5 @@ func init() {
 	rootCmd.AddCommand(transpileCmd)
 	rootCmd.AddCommand(packCmd)
 	rootCmd.AddCommand(unpackCmd)
+	rootCmd.AddCommand(convertCmd)
 }
