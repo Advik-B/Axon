@@ -9,7 +9,7 @@ import (
 
 // Layout constants
 const (
-	nodeHeight  = 90
+	nodeHeight        = 90
 	nodeWidth         = 200
 	minNodeHeight     = 90
 	hSpacing          = 100
@@ -43,9 +43,13 @@ func (n *PhysicsNode) updateRect(orientation LayoutOrientation) {
 	// Dynamically calculate node height based on the number of ports
 	numInputRows := len(n.Inputs)
 	numOutputRows := len(n.Outputs)
-	if n.Type != axon.NodeType_END { numOutputRows++ } // Account for exec_out
-	if n.Type != axon.NodeType_START { numInputRows++ } // Account for exec_in
-	
+	if n.Type != axon.NodeType_END {
+		numOutputRows++
+	} // Account for exec_out
+	if n.Type != axon.NodeType_START {
+		numInputRows++
+	} // Account for exec_in
+
 	bodyRowCount := math.Max(float64(numInputRows), float64(numOutputRows))
 	dynamicHeight := int(nodeHeaderHeight) + nodePaddingTop + nodePaddingBottom + (int(bodyRowCount) * portRowHeight)
 	finalHeight := int(math.Max(float64(dynamicHeight), float64(minNodeHeight)))

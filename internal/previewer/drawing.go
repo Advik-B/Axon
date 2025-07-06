@@ -8,27 +8,27 @@ import (
 
 	"github.com/Advik-B/Axon/pkg/axon"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/text/v2" // <--- CHANGE: Use text/v2
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // --- AESTHETICS & COLOR PALETTE (Inspired by Unreal Engine) ---
 var (
-	colorBg           = color.RGBA{R: 24, G: 25, B: 26, A: 255}
-	colorGrid         = color.RGBA{R: 40, G: 42, B: 44, A: 255}
-	colorGridSub      = color.RGBA{R: 32, G: 34, B: 36, A: 255}
-	colorNodeBody     = color.RGBA{R: 35, G: 38, B: 41, A: 230}
-	colorNodeShadow   = color.RGBA{R: 0, G: 0, B: 0, A: 100}
-	colorNodeBorder   = color.RGBA{R: 10, G: 10, B: 10, A: 255}
-	colorText         = color.White
-	colorTextDim      = color.Gray{Y: 180}
-	colorTextImpl     = color.RGBA{R: 156, G: 163, B: 175, A: 255}
-	nodeHeaderHeight  float32 = 30.0
-	nodeCornerRadius  float32 = 8.0
-	nodeShadowOffset  float32 = 5.0
-	colorExec         = color.White
-	colorPortLabel    = color.Gray{Y: 200}
-	dataTypeColors    = map[string]color.Color{
+	colorBg                  = color.RGBA{R: 24, G: 25, B: 26, A: 255}
+	colorGrid                = color.RGBA{R: 40, G: 42, B: 44, A: 255}
+	colorGridSub             = color.RGBA{R: 32, G: 34, B: 36, A: 255}
+	colorNodeBody            = color.RGBA{R: 35, G: 38, B: 41, A: 230}
+	colorNodeShadow          = color.RGBA{R: 0, G: 0, B: 0, A: 100}
+	colorNodeBorder          = color.RGBA{R: 10, G: 10, B: 10, A: 255}
+	colorText                = color.White
+	colorTextDim             = color.Gray{Y: 180}
+	colorTextImpl            = color.RGBA{R: 156, G: 163, B: 175, A: 255}
+	nodeHeaderHeight float32 = 30.0
+	nodeCornerRadius float32 = 8.0
+	nodeShadowOffset float32 = 5.0
+	colorExec                = color.White
+	colorPortLabel           = color.Gray{Y: 200}
+	dataTypeColors           = map[string]color.Color{
 		"int":     color.RGBA{R: 0, G: 184, B: 212, A: 255},
 		"string":  color.RGBA{R: 217, G: 70, B: 239, A: 255},
 		"bool":    color.RGBA{R: 220, G: 38, B: 38, A: 255},
@@ -71,6 +71,7 @@ func getWhitePixel() *ebiten.Image {
 	return whitePixel
 }
 
+// CHANGE: This function now accepts a text.Face from the v2 package
 func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face, op *ebiten.DrawImageOptions) {
 	tx, ty := op.GeoM.Apply(float64(node.Rect.Min.X), float64(node.Rect.Min.Y))
 	x, y := float32(tx), float32(ty)
@@ -90,13 +91,15 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face,
 
 	titleOp := &text.DrawOptions{}
 	titleOp.GeoM.Translate(float64(x+10), float64(y+22))
+	titleOp.ColorScale.Reset()
 	titleOp.ColorScale.ScaleWithColor(colorText)
 	text.Draw(screen, node.Label, face, titleOp)
 
 	if typeTitle, ok := nodeTypeTitles[node.Type]; ok {
 		typeOp := &text.DrawOptions{}
-		typeAdvance, _ := text.Measure(typeTitle, smallFace, 0)
-		typeOp.GeoM.Translate(float64(x+w)-typeAdvance-10, float64(y+22))
+		advance, _ := text.Measure(typeTitle, smallFace, 0)
+		typeOp.GeoM.Translate(float64(x+w)-advance-10, float64(y+22))
+		typeOp.ColorScale.Reset()
 		typeOp.ColorScale.ScaleWithColor(color.RGBA{255, 255, 255, 100})
 		text.Draw(screen, typeTitle, smallFace, typeOp)
 	}
@@ -104,6 +107,7 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face,
 	if node.Type == axon.NodeType_FUNCTION && node.ImplReference != "" {
 		implOp := &text.DrawOptions{}
 		implOp.GeoM.Translate(float64(x+10), float64(y+nodeHeaderHeight*zoom+20))
+		implOp.ColorScale.Reset()
 		implOp.ColorScale.ScaleWithColor(colorTextImpl)
 		text.Draw(screen, node.ImplReference, smallFace, implOp)
 	}
@@ -111,16 +115,22 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face,
 	drawPorts(screen, node, smallFace, op)
 }
 
+// CHANGE: This function now accepts a text.Face from the v2 package
 func drawPorts(screen *ebiten.Image, node *LayoutNode, face text.Face, op *ebiten.DrawImageOptions) {
 	if node.Type != axon.NodeType_START {
 		if p, ok := node.InputPorts["exec_in"]; ok {
 			drawExecPin(screen, p, false, colorExec, op)
 		}
 		for name, p := range node.InputPorts {
-			if name == "exec_in" { continue }
+			if name == "exec_in" {
+				continue
+			}
 			var portType string
 			for _, portDef := range node.Inputs {
-				if portDef.Name == name { portType = portDef.TypeName; break }
+				if portDef.Name == name {
+					portType = portDef.TypeName
+					break
+				}
 			}
 			drawDataPin(screen, p, portType, name, false, face, op)
 		}
@@ -130,10 +140,15 @@ func drawPorts(screen *ebiten.Image, node *LayoutNode, face text.Face, op *ebite
 			drawExecPin(screen, p, true, colorExec, op)
 		}
 		for name, p := range node.OutputPorts {
-			if name == "exec_out" { continue }
+			if name == "exec_out" {
+				continue
+			}
 			var portType string
 			for _, portDef := range node.Outputs {
-				if portDef.Name == name { portType = portDef.TypeName; break }
+				if portDef.Name == name {
+					portType = portDef.TypeName
+					break
+				}
 			}
 			drawDataPin(screen, p, portType, name, true, face, op)
 		}
@@ -161,6 +176,7 @@ func drawExecPin(screen *ebiten.Image, p image.Point, isOutput bool, clr color.C
 	screen.DrawTriangles(vertices, indices, getWhitePixel(), &ebiten.DrawTrianglesOptions{})
 }
 
+// CHANGE: This function now accepts a text.Face from the v2 package
 func drawDataPin(screen *ebiten.Image, p image.Point, typeName, label string, isOutput bool, face text.Face, op *ebiten.DrawImageOptions) {
 	zoom := float32(op.GeoM.Element(0, 0))
 	clr, ok := dataTypeColors[typeName]
@@ -172,12 +188,12 @@ func drawDataPin(screen *ebiten.Image, p image.Point, typeName, label string, is
 	vector.DrawFilledCircle(screen, float32(tx), float32(ty), portRadius*zoom, clr, false)
 
 	labelOp := &text.DrawOptions{}
+	labelOp.ColorScale.Reset()
 	labelOp.ColorScale.ScaleWithColor(colorPortLabel)
 
 	metrics := face.Metrics()
 	advance, _ := text.Measure(label, face, 0)
 
-	// **THE FIX**: Use the correct `HDescent` field and a proper centering formula.
 	yOffset := float64(ty) + (metrics.CapHeight+metrics.HDescent)/2 - metrics.HDescent
 
 	if isOutput {
