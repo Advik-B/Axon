@@ -1,6 +1,7 @@
 {
   "id": "stdlib-example-v2",
   "name": "Standard Library Demo with Full Validation",
+  "imports": ["fmt", "os", "strings"],
   "nodes": [
     {
       "id": "start",
