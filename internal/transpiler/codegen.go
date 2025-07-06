@@ -108,7 +108,6 @@ func generateConstant(state *transpilationState, node *axon.Node, isGlobal bool)
 	return fmt.Sprintf("\t%s := %s\n", varName, val), nil
 }
 
-// generateFunctionCall generates a call to a function or method.
 func generateFunctionCall(state *transpilationState, node *axon.Node) (string, error) {
 	if node.ImplReference == "" {
 		return "", fmt.Errorf("function call node %s is missing 'impl_reference'", node.Id)
@@ -150,37 +149,60 @@ func generateFunctionCall(state *transpilationState, node *axon.Node) (string, e
 	return fmt.Sprintf("\t%s(%s)\n", node.ImplReference, argString), nil
 }
 
-// generateOperator generates code for a binary operation or struct instantiation.
+// generateOperator generates code for a binary operation or a unary type cast.
 func generateOperator(state *transpilationState, node *axon.Node) (string, error) {
 	op, ok := node.Config["op"]
 	if !ok {
 		return "", fmt.Errorf("operator node %s has no 'op' in config", node.Id)
 	}
 
-	// Handle special struct instantiation operator
-	if strings.HasPrefix(op, "&") || strings.HasPrefix(op, "") && 'A' <= op[0] && op[0] <= 'Z' {
-		var fields []string
-		for _, port := range node.Inputs {
-			arg, err := findSourceVar(state, node.Id, port.Name)
-			if err != nil {
-				return "", err
+	// --- UNARY OPERATOR LOGIC (Type Casting) ---
+	// If the operator has one input, we treat it as a unary operation like a type cast.
+	if len(node.Inputs) == 1 {
+		inputPort := node.Inputs[0]
+		inputVar, err := findSourceVar(state, node.Id, inputPort.Name)
+		if err != nil {
+			return "", fmt.Errorf("could not resolve input for unary operator node %s: %w", node.Id, err)
+		}
+
+		varName := node.Label
+		outputPort := node.Outputs[0]
+		state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, outputPort.Name)] = varName
+
+		// Generate the cast: result := string(source)
+		return fmt.Sprintf("\t%s := %s(%s)\n", varName, op, inputVar), nil
+	}
+
+	// --- BINARY OPERATOR LOGIC (Arithmetic, etc.) ---
+	// If it's not a unary operator, proceed with the existing binary logic.
+	if len(node.Inputs) == 2 {
+		// Handle special struct instantiation operator
+		if strings.HasPrefix(op, "&") || (len(op) > 0 && 'A' <= op[0] && op[0] <= 'Z') {
+			var fields []string
+			for _, port := range node.Inputs {
+				arg, err := findSourceVar(state, node.Id, port.Name)
+				if err != nil {
+					return "", err
+				}
+				fields = append(fields, arg)
 			}
-			fields = append(fields, arg)
+			varName := node.Label
+			state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, node.Outputs[0].Name)] = varName
+			return fmt.Sprintf("\t%s := %s{%s}\n", varName, op, strings.Join(fields, ", ")), nil
+		}
+
+		// Handle standard binary operators
+		inputA, errA := findSourceVar(state, node.Id, "a")
+		inputB, errB := findSourceVar(state, node.Id, "b")
+		if errA != nil || errB != nil {
+			return "", fmt.Errorf("could not resolve inputs for operator node %s", node.Id)
 		}
 		varName := node.Label
 		state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, node.Outputs[0].Name)] = varName
-		return fmt.Sprintf("\t%s := %s{%s}\n", varName, op, strings.Join(fields, ", ")), nil
+		return fmt.Sprintf("\t%s := %s %s %s\n", varName, inputA, op, inputB), nil
 	}
 
-	// Handle standard binary operators
-	inputA, errA := findSourceVar(state, node.Id, "a")
-	inputB, errB := findSourceVar(state, node.Id, "b")
-	if errA != nil || errB != nil {
-		return "", fmt.Errorf("could not resolve inputs for operator node %s", node.Id)
-	}
-	varName := node.Label
-	state.outputVarMap[fmt.Sprintf("%s.%s", node.Id, node.Outputs[0].Name)] = varName
-	return fmt.Sprintf("\t%s := %s %s %s\n", varName, inputA, op, inputB), nil
+	return "", fmt.Errorf("operator node '%s' has an unsupported number of inputs (%d)", node.Label, len(node.Inputs))
 }
 
 // generateReturn generates a return statement.
