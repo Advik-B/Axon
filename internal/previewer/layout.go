@@ -9,12 +9,15 @@ import (
 
 // Layout constants
 const (
-	nodeWidth   = 200
-	nodeHeight  = 90
-	hSpacing    = 100
-	vSpacing    = 70
-	portRadius  = 5
-	portSpacing = 22
+	nodeHeight        = 90
+	nodeWidth         = 200
+	minNodeHeight     = 90
+	hSpacing          = 100
+	vSpacing          = 70
+	portRadius        = 5
+	portRowHeight     = 22 // Vertical space allocated for each port row
+	nodePaddingTop    = 15
+	nodePaddingBottom = 15
 )
 
 // LayoutOrientation defines the direction of the graph flow.
@@ -36,34 +39,49 @@ type LayoutNode struct {
 // updateRect recalculates a node's visual rectangle and port positions based on its physics position and orientation.
 func (n *PhysicsNode) updateRect(orientation LayoutOrientation) {
 	x, y := int(math.Round(n.Position.X)), int(math.Round(n.Position.Y))
-	n.Rect = image.Rect(x, y, x+nodeWidth, y+nodeHeight)
 
-	// Dynamically update port positions based on orientation
-	if orientation == Horizontal { // Left-to-Right layout
-		n.InputPorts["exec_in"] = image.Pt(x, y+20)
-		n.OutputPorts["exec_out"] = image.Pt(x+nodeWidth, y+20)
-		numInputs := len(n.Node.Inputs)
-		startY_in := y + nodeHeight/2 - (numInputs-1)*portSpacing/2
-		for i, p := range n.Node.Inputs {
-			n.InputPorts[p.Name] = image.Pt(x, startY_in+i*portSpacing)
+	// Dynamically calculate node height based on the number of ports
+	numInputRows := len(n.Inputs)
+	numOutputRows := len(n.Outputs)
+	if n.Type != axon.NodeType_END {
+		numOutputRows++
+	} // Account for exec_out
+	if n.Type != axon.NodeType_START {
+		numInputRows++
+	} // Account for exec_in
+
+	bodyRowCount := math.Max(float64(numInputRows), float64(numOutputRows))
+	dynamicHeight := int(nodeHeaderHeight) + nodePaddingTop + nodePaddingBottom + (int(bodyRowCount) * portRowHeight)
+	finalHeight := int(math.Max(float64(dynamicHeight), float64(minNodeHeight)))
+
+	n.Rect = image.Rect(x, y, x+nodeWidth, y+finalHeight)
+
+	// Dynamically update port positions
+	if orientation == Horizontal {
+		// Exec ports are at the top of the body
+		n.InputPorts["exec_in"] = image.Pt(x, y+int(nodeHeaderHeight)+nodePaddingTop)
+		n.OutputPorts["exec_out"] = image.Pt(x+nodeWidth, y+int(nodeHeaderHeight)+nodePaddingTop)
+		// Data ports follow
+		for i, p := range n.Inputs {
+			portY := y + int(nodeHeaderHeight) + nodePaddingTop + (i+1)*portRowHeight
+			n.InputPorts[p.Name] = image.Pt(x, portY)
 		}
-		numOutputs := len(n.Node.Outputs)
-		startY_out := y + nodeHeight/2 - (numOutputs-1)*portSpacing/2
-		for i, p := range n.Node.Outputs {
-			n.OutputPorts[p.Name] = image.Pt(x+nodeWidth, startY_out+i*portSpacing)
+		for i, p := range n.Outputs {
+			portY := y + int(nodeHeaderHeight) + nodePaddingTop + (i+1)*portRowHeight
+			n.OutputPorts[p.Name] = image.Pt(x+nodeWidth, portY)
 		}
-	} else { // Top-to-Bottom layout
-		n.InputPorts["exec_in"] = image.Pt(x+25, y)
-		n.OutputPorts["exec_out"] = image.Pt(x+25, y+nodeHeight)
-		numInputs := len(n.Node.Inputs)
-		startX_in := x + nodeWidth/2 - (numInputs-1)*portSpacing/2
-		for i, p := range n.Node.Inputs {
-			n.InputPorts[p.Name] = image.Pt(startX_in+i*portSpacing, y)
+	} else { // Vertical
+		n.InputPorts["exec_in"] = image.Pt(x+nodeWidth/2, y)
+		n.OutputPorts["exec_out"] = image.Pt(x+nodeWidth/2, y+finalHeight)
+		numInputs := len(n.Inputs)
+		startX_in := x + nodeWidth/2 - (numInputs-1)*portRowHeight/2
+		for i, p := range n.Inputs {
+			n.InputPorts[p.Name] = image.Pt(startX_in+i*portRowHeight, y)
 		}
-		numOutputs := len(n.Node.Outputs)
-		startX_out := x + nodeWidth/2 - (numOutputs-1)*portSpacing/2
-		for i, p := range n.Node.Outputs {
-			n.OutputPorts[p.Name] = image.Pt(startX_out+i*portSpacing, y+nodeHeight)
+		numOutputs := len(n.Outputs)
+		startX_out := x + nodeWidth/2 - (numOutputs-1)*portRowHeight/2
+		for i, p := range n.Outputs {
+			n.OutputPorts[p.Name] = image.Pt(startX_out+i*portRowHeight, y+finalHeight)
 		}
 	}
 }
@@ -75,11 +93,11 @@ func UpdateLayoutTargets(nodes map[string]*PhysicsNode, graph *axon.Graph, orien
 
 	for l, layerNodes := range layers {
 		if orientation == Horizontal {
-			layerHeight := len(layerNodes)*(nodeHeight+vSpacing) - vSpacing
+			layerHeight := len(layerNodes)*(minNodeHeight+vSpacing) - vSpacing
 			startY := -layerHeight / 2
 			x := l * (nodeWidth + hSpacing)
 			for i, node := range layerNodes {
-				y := startY + i*(nodeHeight+vSpacing)
+				y := startY + i*(minNodeHeight+vSpacing)
 				if pn, ok := nodes[node.Id]; ok {
 					pn.TargetPosition = Vec2{X: float64(x), Y: float64(y)}
 				}
@@ -87,7 +105,7 @@ func UpdateLayoutTargets(nodes map[string]*PhysicsNode, graph *axon.Graph, orien
 		} else { // Vertical
 			layerWidth := len(layerNodes)*(nodeWidth+hSpacing) - hSpacing
 			startX := -layerWidth / 2
-			y := l * (nodeHeight + vSpacing)
+			y := l * (minNodeHeight + vSpacing)
 			for i, node := range layerNodes {
 				x := startX + i*(nodeWidth+hSpacing)
 				if pn, ok := nodes[node.Id]; ok {
