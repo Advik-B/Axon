@@ -64,3 +64,8 @@ Comments can be plaintext or markdown.
 - Comments can also be not associated with any node (although this is not recomended, we dont disallow it)
 - Comments like these are considered purely visual (will only show up on the node graph. but not the editor)
 - There comments will be LOST on transpilation to go code
+
+
+## Visual Info/Attributes
+- Nodes can optionally have a visual attribute, when defines their xy position in graph and also their dimentions
+- This is purely cosmetic and does not affect the go code
