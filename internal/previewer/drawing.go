@@ -18,26 +18,26 @@ var (
 	colorGrid    = color.RGBA{R: 40, G: 42, B: 44, A: 255}
 	colorGridSub = color.RGBA{R: 32, G: 34, B: 36, A: 255}
 
-	colorNodeBody      = color.RGBA{R: 35, G: 38, B: 41, A: 230}
-	colorNodeShadow    = color.RGBA{R: 0, G: 0, B: 0, A: 100}
-	colorNodeBorder    = color.RGBA{R: 10, G: 10, B: 10, A: 255}
-	colorText          = color.White
-	colorTextDim       = color.Gray{Y: 180}
-	colorTextImpl      = color.RGBA{R: 156, G: 163, B: 175, A: 255}
-	nodeHeaderHeight   float32 = 30.0
-	nodeCornerRadius   float32 = 8.0
-	nodeShadowOffset   float32 = 5.0
+	colorNodeBody            = color.RGBA{R: 35, G: 38, B: 41, A: 230}
+	colorNodeShadow          = color.RGBA{R: 0, G: 0, B: 0, A: 100}
+	colorNodeBorder          = color.RGBA{R: 10, G: 10, B: 10, A: 255}
+	colorText                = color.White
+	colorTextDim             = color.Gray{Y: 180}
+	colorTextImpl            = color.RGBA{R: 156, G: 163, B: 175, A: 255}
+	nodeHeaderHeight float32 = 30.0
+	nodeCornerRadius float32 = 8.0
+	nodeShadowOffset float32 = 5.0
 
 	colorExec      = color.White
 	colorPortLabel = color.Gray{Y: 200}
 	dataTypeColors = map[string]color.Color{
-		"int":    color.RGBA{R: 0, G: 184, B: 212, A: 255},
-		"string": color.RGBA{R: 217, G: 70, B: 239, A: 255},
-		"bool":   color.RGBA{R: 220, G: 38, B: 38, A: 255},
-		"[]byte": color.RGBA{R: 132, G: 204, B: 22, A: 255},
-		"error":  color.RGBA{R: 245, G: 158, B: 11, A: 255},
-		"float":  color.RGBA{R: 52, G: 211, B: 153, A: 255},
-		"default":color.RGBA{R: 139, G: 92, B: 246, A: 255},
+		"int":     color.RGBA{R: 0, G: 184, B: 212, A: 255},
+		"string":  color.RGBA{R: 217, G: 70, B: 239, A: 255},
+		"bool":    color.RGBA{R: 220, G: 38, B: 38, A: 255},
+		"[]byte":  color.RGBA{R: 132, G: 204, B: 22, A: 255},
+		"error":   color.RGBA{R: 245, G: 158, B: 11, A: 255},
+		"float":   color.RGBA{R: 52, G: 211, B: 153, A: 255},
+		"default": color.RGBA{R: 139, G: 92, B: 246, A: 255},
 	}
 	nodeColors = map[axon.NodeType]color.Color{
 		axon.NodeType_START:      color.RGBA{R: 16, G: 185, B: 129, A: 255},
@@ -66,7 +66,6 @@ var (
 	whitePixelOnce sync.Once
 	whitePixel     *ebiten.Image
 )
-
 
 func getWhitePixel() *ebiten.Image {
 	whitePixelOnce.Do(func() {
@@ -130,18 +129,28 @@ func drawPorts(screen *ebiten.Image, node *LayoutNode, face text.Face, op *ebite
 	}
 
 	for name, p := range node.InputPorts {
-		if name == "exec_in" { continue }
+		if name == "exec_in" {
+			continue
+		}
 		var portType string
 		for _, portDef := range node.Inputs {
-			if portDef.Name == name { portType = portDef.TypeName; break }
+			if portDef.Name == name {
+				portType = portDef.TypeName
+				break
+			}
 		}
 		drawDataPin(screen, p, portType, name, false, face, op)
 	}
 	for name, p := range node.OutputPorts {
-		if name == "exec_out" { continue }
+		if name == "exec_out" {
+			continue
+		}
 		var portType string
 		for _, portDef := range node.Outputs {
-			if portDef.Name == name { portType = portDef.TypeName; break }
+			if portDef.Name == name {
+				portType = portDef.TypeName
+				break
+			}
 		}
 		drawDataPin(screen, p, portType, name, true, face, op)
 	}
@@ -167,7 +176,6 @@ func drawExecPin(screen *ebiten.Image, p image.Point, isOutput bool, clr color.C
 	colorVerts(vertices, clr)
 	screen.DrawTriangles(vertices, indices, getWhitePixel(), &ebiten.DrawTrianglesOptions{})
 }
-
 
 func drawDataPin(screen *ebiten.Image, p image.Point, typeName, label string, isOutput bool, face text.Face, op *ebiten.DrawImageOptions) {
 	zoom := float32(op.GeoM.Element(0, 0))
