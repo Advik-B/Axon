@@ -18,7 +18,7 @@ func GenerateDebugGraph(graph *axon.Graph) *DebugGraph {
 	for i, node := range graph.Nodes {
 		debugNodes[i] = &DebugNode{
 			HeadComment: generateNodeComment(node, graph, nodeLabelMap),
-			Node: node,
+			Node:        node,
 		}
 	}
 
@@ -35,22 +35,21 @@ func GenerateDebugGraph(graph *axon.Graph) *DebugGraph {
 // generateNodeComment creates a descriptive multi-line comment for a single node.
 func generateNodeComment(node *axon.Node, graph *axon.Graph, nodeLabels map[string]string) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(" Node: %s (%s)\n Type: %s", node.Label, node.Id, node.Type.String()))
 
+	// **THE FIX**: Create a more meaningful detail string instead of the raw ID.
+	var details string
 	switch node.Type {
 	case axon.NodeType_CONSTANT:
-		sb.WriteString(fmt.Sprintf("\n Provides the static value: %s", node.Config["value"]))
+		details = fmt.Sprintf("value: %s", node.Config["value"])
 	case axon.NodeType_FUNCTION:
-		sb.WriteString(fmt.Sprintf("\n Calls Go function: %s", node.ImplReference))
+		details = fmt.Sprintf("calls: %s", node.ImplReference)
 	case axon.NodeType_OPERATOR:
-		sb.WriteString(fmt.Sprintf("\n Performs operation: %s", node.Config["op"]))
-	case axon.NodeType_START:
-		sb.WriteString("\n Entry point for an execution path.")
-	case axon.NodeType_END:
-		sb.WriteString("\n Termination point for an execution path.")
-	case axon.NodeType_IGNORE:
-		sb.WriteString("\n Explicitly discards any value connected to its input.")
+		details = fmt.Sprintf("op: '%s'", node.Config["op"])
+	default:
+		details = node.Id // Fallback for other types
 	}
+
+	sb.WriteString(fmt.Sprintf(" Node: %s (%s)\n Type: %s", node.Label, details, node.Type.String()))
 
 	// Describe input data connections
 	for _, inputPort := range node.Inputs {
