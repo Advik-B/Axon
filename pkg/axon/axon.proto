@@ -7,17 +7,21 @@ option go_package = "github.com/Advik-B/Axon/pkg/axon";
 // NodeType defines the behavior of a node.
 enum NodeType {
     NODE_UNKNOWN = 0;
-    START = 1;          // The entry point for an execution flow.
-    END = 2;            // The termination point for an execution flow.
-    CONSTANT = 3;       // Provides a static value.
-    FUNCTION = 4;       // Calls a Go function (e.g., "fmt.Println").
-    OPERATOR = 5;       // Performs a binary operation (e.g., "+", "==").
-    IGNORE = 6;         // Explicitly discards an input value (like `_` in Go).
-    RETURN = 7;         // Returns a value from the graph's function scope.
+    // Execution Flow Nodes
+    START = 1;          // The entry point for the main execution flow.
+    END = 2;            // The termination point for the main execution flow (implies no return).
+    RETURN = 3;         // Returns value(s) from a function defined by FUNC_DEF.
+    // Definition Nodes (often global)
+    FUNC_DEF = 4;       // Defines a function or a method.
+    STRUCT_DEF = 5;     // Defines a struct type.
+    CONSTANT = 6;       // Provides a static value.
+    // Operational Nodes
+    FUNCTION = 7;       // A call to a function or method.
+    OPERATOR = 8;       // Performs a binary operation (e.g., "+", "==").
+    IGNORE = 9;         // Explicitly discards an input value (like `_` in Go).
 }
 
 // VisualInfo stores the position and dimensions of a node for a GUI.
-// This is ignored by the transpiler.
 message VisualInfo {
     float x = 1;
     float y = 2;
@@ -27,29 +31,35 @@ message VisualInfo {
 
 // Port represents a connection point for data on a node.
 message Port {
-    string name = 1;      // The name of the port (e.g., "a", "result").
-    string type_name = 2; // The Go type this port handles (e.g., "string", "*http.Request").
+    string name = 1;      // The name of the port (e.g., "a", "user", "result").
+    string type_name = 2; // The Go type this port handles (e.g., "string", "*models.User").
+}
+
+// Comment stores documentation that can be attached to nodes.
+message Comment {
+    string id = 1;          // Unique ID for this comment.
+    string content = 2;     // The comment text (can be markdown).
 }
 
 // A Node is the core building block of an Axon graph.
 message Node {
     string id = 1;                   // Unique node ID within the graph.
     NodeType type = 2;              // The behavior of this node.
-    string label = 3;               // Human-readable name used for variable naming.
+    string label = 3;               // Human-readable name.
     repeated Port inputs = 4;       // Data input ports.
     repeated Port outputs = 5;      // Data output ports.
 
     // For FUNCTION nodes, this specifies the Go function to call.
-    // Example: "fmt.Println", "os.ReadFile"
     string impl_reference = 6;
 
     // Node-specific configuration.
-    // For CONSTANT: "value" -> "\"hello\"", "123"
-    // For OPERATOR: "op" -> "+", "-"
     map<string, string> config = 7;
 
     // Optional visual information.
     VisualInfo visual_info = 8;
+
+    // List of comment IDs attached to this node.
+    repeated string comment_ids = 9;
 }
 
 // DataEdge represents a data dependency between two nodes.
@@ -71,7 +81,11 @@ message Graph {
     string id = 1;
     string name = 2;
 
-    repeated Node nodes = 3;
-    repeated DataEdge data_edges = 4;
-    repeated ExecEdge exec_edges = 5;
+    // Explicit list of Go packages to import.
+    repeated string imports = 3;
+
+    repeated Node nodes = 4;
+    repeated DataEdge data_edges = 5;
+    repeated ExecEdge exec_edges = 6;
+    repeated Comment comments = 7; // A pool of all comments in the graph.
 }
