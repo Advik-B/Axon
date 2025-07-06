@@ -28,5 +28,4 @@ func init() {
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(packCmd)
 	rootCmd.AddCommand(unpackCmd)
-	rootCmd.AddCommand(previewCmd)
 }
