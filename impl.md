@@ -30,3 +30,27 @@ return struct{
 }{"Gopher", 17} // Transpilations like this should not be allowed
 
 ```
+
+## Methods for structs
+- Same as functions but associated with a struct
+- Need to be able to differenciate when a struct is used as a refernce vs when a sturct is copied
+
+```go
+
+type S {
+    id string
+    value bool
+}
+
+// The user should be able to differenciate between
+// this
+func (s S) String() string {
+    return s.id + string(s.Value)
+}
+
+// And this
+func (s *S) setValue(val bool) {
+    s.value = val
+}
+```
+
