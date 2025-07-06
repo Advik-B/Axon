@@ -35,7 +35,9 @@ The star of the show. Axon's previewer isn't just a static diagram. It's a livin
 
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/f451e867-3cd4-490b-97b0-f61e2f8ea852" alt="Axon Physics-Based Previewer" width="1000"/>
+	
+https://github.com/user-attachments/assets/17ca4d01-5d11-417e-9d29-0c53ec3f2045
+
   <br/>
   <em>Pan, zoom, and drag nodes. The graph fluidly rearranges itself while showing the generated Go code in a side panel.</em>
   <br/>
