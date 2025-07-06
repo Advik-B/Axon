@@ -54,3 +54,13 @@ func (s *S) setValue(val bool) {
 }
 ```
 
+## Comments
+
+Comments can be plaintext or markdown.
+- For a comment to be included in the transpilation it must be attached to a node 
+- A comment may be attached to multiple nodes (when transpiled, the comment will be copied over (be)for every node)
+
+### Comments (special case)
+- Comments can also be not associated with any node (although this is not recomended, we dont disallow it)
+- Comments like these are considered purely visual (will only show up on the node graph. but not the editor)
+- There comments will be LOST on transpilation to go code
