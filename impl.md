@@ -22,3 +22,11 @@
 - Structs can be defined independent of execution flow or within the path of execution
 - Structs that are defined independent of execution flow will be put after the imports
 - Axon goes out of its way to forbid in-line or "anonymus" structs. Although this will force the programmer to define all structs explictly. This rule will make debugging much easier
+```go
+
+return struct{
+    name string
+    age int
+}{"Gopher", 17} // Transpilations like this should not be allowed
+
+```
