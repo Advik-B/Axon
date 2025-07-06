@@ -18,7 +18,7 @@ func GenerateDebugGraph(graph *axon.Graph) *DebugGraph {
 	for i, node := range graph.Nodes {
 		debugNodes[i] = &DebugNode{
 			HeadComment: generateNodeComment(node, graph, nodeLabelMap),
-			Node:        *node,
+			Node: node,
 		}
 	}
 

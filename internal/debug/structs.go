@@ -5,7 +5,8 @@ import "github.com/Advik-B/Axon/pkg/axon"
 // DebugNode represents a node with an attached comment for YAML output.
 type DebugNode struct {
 	HeadComment string `yaml:"-"` // This field is used by yaml.v3 to add a comment block before the node.
-	axon.Node   `yaml:",inline"`
+	// By using a pointer, we avoid copying the underlying struct and its sync.Mutex.
+	*axon.Node `yaml:",inline"`
 }
 
 // DebugGraph is a wrapper around the core axon.Graph for YAML serialization with comments.
