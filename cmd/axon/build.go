@@ -12,8 +12,8 @@ import (
 )
 
 // transpileCmd represents the transpile command
-var transpileCmd = &cobra.Command{
-	Use:   "transpile [path/to/graph.ax]",
+var buildCmd = &cobra.Command{
+	Use:   "build [path/to/graph.ax]",
 	Short: "Transpiles an Axon graph file (.ax, .axb, .axd) to Go code.",
 	Long: `Transpile reads an Axon graph file, validates its structure, and generates
 a runnable Go program located in the 'out' directory.
@@ -21,15 +21,15 @@ a runnable Go program located in the 'out' directory.
 It checks for valid execution paths, explicit error handling, and type consistency
 before generating the final Go code. It can process .ax, .axb, and .axd formats.`,
 	Args: cobra.ExactArgs(1), // Requires exactly one argument: the file path.
-	Run:  runTranspile,
+	Run:  runBuild,
 }
 
 // runTranspile contains the sequential logic for the transpilation process.
-func runTranspile(cmd *cobra.Command, args []string) {
+func runBuild(cmd *cobra.Command, args []string) {
 	filePath := args[0]
 	startTime := time.Now()
 
-	fmt.Println("🚀 Starting Axon transpile process...")
+	fmt.Println("🚀 Starting Axon build process...")
 
 	// 1. Validate file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
