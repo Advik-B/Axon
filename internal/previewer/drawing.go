@@ -14,23 +14,21 @@ import (
 
 // --- AESTHETICS & COLOR PALETTE (Inspired by Unreal Engine) ---
 var (
-	colorBg      = color.RGBA{R: 24, G: 25, B: 26, A: 255}
-	colorGrid    = color.RGBA{R: 40, G: 42, B: 44, A: 255}
-	colorGridSub = color.RGBA{R: 32, G: 34, B: 36, A: 255}
-
-	colorNodeBody            = color.RGBA{R: 35, G: 38, B: 41, A: 230}
-	colorNodeShadow          = color.RGBA{R: 0, G: 0, B: 0, A: 100}
-	colorNodeBorder          = color.RGBA{R: 10, G: 10, B: 10, A: 255}
-	colorText                = color.White
-	colorTextDim             = color.Gray{Y: 180}
-	colorTextImpl            = color.RGBA{R: 156, G: 163, B: 175, A: 255}
-	nodeHeaderHeight float32 = 30.0
-	nodeCornerRadius float32 = 8.0
-	nodeShadowOffset float32 = 5.0
-
-	colorExec      = color.White
-	colorPortLabel = color.Gray{Y: 200}
-	dataTypeColors = map[string]color.Color{
+	colorBg           = color.RGBA{R: 24, G: 25, B: 26, A: 255}
+	colorGrid         = color.RGBA{R: 40, G: 42, B: 44, A: 255}
+	colorGridSub      = color.RGBA{R: 32, G: 34, B: 36, A: 255}
+	colorNodeBody     = color.RGBA{R: 35, G: 38, B: 41, A: 230}
+	colorNodeShadow   = color.RGBA{R: 0, G: 0, B: 0, A: 100}
+	colorNodeBorder   = color.RGBA{R: 10, G: 10, B: 10, A: 255}
+	colorText         = color.White
+	colorTextDim      = color.Gray{Y: 180}
+	colorTextImpl     = color.RGBA{R: 156, G: 163, B: 175, A: 255}
+	nodeHeaderHeight  float32 = 30.0
+	nodeCornerRadius  float32 = 8.0
+	nodeShadowOffset  float32 = 5.0
+	colorExec         = color.White
+	colorPortLabel    = color.Gray{Y: 200}
+	dataTypeColors    = map[string]color.Color{
 		"int":     color.RGBA{R: 0, G: 184, B: 212, A: 255},
 		"string":  color.RGBA{R: 217, G: 70, B: 239, A: 255},
 		"bool":    color.RGBA{R: 220, G: 38, B: 38, A: 255},
@@ -51,9 +49,7 @@ var (
 		axon.NodeType_FUNC_DEF:   color.RGBA{R: 34, G: 197, B: 94, A: 255},
 	}
 	defaultNodeColor = color.RGBA{R: 45, G: 48, B: 51, A: 255}
-
-	// **NEW**: Map for node type titles
-	nodeTypeTitles = map[axon.NodeType]string{
+	nodeTypeTitles   = map[axon.NodeType]string{
 		axon.NodeType_FUNCTION:   "FUNCTION CALL",
 		axon.NodeType_CONSTANT:   "CONSTANT",
 		axon.NodeType_OPERATOR:   "OPERATOR",
@@ -92,13 +88,11 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face,
 	vector.DrawFilledRect(screen, x, y+(nodeHeaderHeight*zoom-radius), w, radius, nodeColor, false)
 	strokeRoundRect(screen, x, y, w, h, radius, 1, colorNodeBorder)
 
-	// --- Text Drawing ---
 	titleOp := &text.DrawOptions{}
 	titleOp.GeoM.Translate(float64(x+10), float64(y+22))
 	titleOp.ColorScale.ScaleWithColor(colorText)
 	text.Draw(screen, node.Label, face, titleOp)
 
-	// **FIX**: Draw the small node type title in the header, right-aligned.
 	if typeTitle, ok := nodeTypeTitles[node.Type]; ok {
 		typeOp := &text.DrawOptions{}
 		typeAdvance, _ := text.Measure(typeTitle, smallFace, 0)
@@ -131,7 +125,6 @@ func drawPorts(screen *ebiten.Image, node *LayoutNode, face text.Face, op *ebite
 			drawDataPin(screen, p, portType, name, false, face, op)
 		}
 	}
-
 	if node.Type != axon.NodeType_END && node.Type != axon.NodeType_RETURN {
 		if p, ok := node.OutputPorts["exec_out"]; ok {
 			drawExecPin(screen, p, true, colorExec, op)
@@ -146,7 +139,6 @@ func drawPorts(screen *ebiten.Image, node *LayoutNode, face text.Face, op *ebite
 		}
 	}
 }
-
 
 func drawExecPin(screen *ebiten.Image, p image.Point, isOutput bool, clr color.Color, op *ebiten.DrawImageOptions) {
 	zoom := float32(op.GeoM.Element(0, 0))
@@ -181,8 +173,12 @@ func drawDataPin(screen *ebiten.Image, p image.Point, typeName, label string, is
 
 	labelOp := &text.DrawOptions{}
 	labelOp.ColorScale.ScaleWithColor(colorPortLabel)
-	advance, capHeight := text.Measure(label, face, 0)
-	yOffset := float64(ty) + capHeight/2
+
+	metrics := face.Metrics()
+	advance, _ := text.Measure(label, face, 0)
+
+	// **THE FIX**: Use the correct `HDescent` field and a proper centering formula.
+	yOffset := float64(ty) + (metrics.CapHeight+metrics.HDescent)/2 - metrics.HDescent
 
 	if isOutput {
 		labelOp.GeoM.Translate(float64(tx)-advance-float64(portRadius*zoom+5), yOffset)
@@ -191,7 +187,6 @@ func drawDataPin(screen *ebiten.Image, p image.Point, typeName, label string, is
 	}
 	text.Draw(screen, label, face, labelOp)
 }
-
 
 func drawBezierCurve(screen *ebiten.Image, p0, p3 image.Point, clr color.Color, op *ebiten.DrawImageOptions) {
 	dx, dy := p3.X-p0.X, p3.Y-p0.Y
