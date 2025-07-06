@@ -7,13 +7,22 @@ import (
 	"github.com/Advik-B/Axon/pkg/axon"
 )
 
+// Layout constants
 const (
-	nodeWidth   = 180
-	nodeHeight  = 80
-	hSpacing    = 80
-	vSpacing    = 60
+	nodeWidth   = 200
+	nodeHeight  = 90
+	hSpacing    = 100
+	vSpacing    = 70
 	portRadius  = 5
-	portSpacing = 20
+	portSpacing = 22
+)
+
+// LayoutOrientation defines the direction of the graph flow.
+type LayoutOrientation int
+
+const (
+	Horizontal LayoutOrientation = iota
+	Vertical
 )
 
 // LayoutNode stores a node's visual info, which is updated by the physics simulation.
@@ -24,31 +33,75 @@ type LayoutNode struct {
 	OutputPorts map[string]image.Point
 }
 
-// updateRect recalculates a node's visual rectangle and port positions based on its physics position.
-func (n *PhysicsNode) updateRect() {
+// updateRect recalculates a node's visual rectangle and port positions based on its physics position and orientation.
+func (n *PhysicsNode) updateRect(orientation LayoutOrientation) {
 	x, y := int(math.Round(n.Position.X)), int(math.Round(n.Position.Y))
 	n.Rect = image.Rect(x, y, x+nodeWidth, y+nodeHeight)
 
-	// Update port positions relative to the new rect
-	n.InputPorts["exec_in"] = image.Pt(x, y+20)
-	n.OutputPorts["exec_out"] = image.Pt(x+nodeWidth, y+20)
-
-	numInputs := len(n.Node.Inputs)
-	startY_in := y + nodeHeight/2 - (numInputs-1)*portSpacing/2
-	for i, p := range n.Node.Inputs {
-		n.InputPorts[p.Name] = image.Pt(x, startY_in+i*portSpacing)
-	}
-
-	numOutputs := len(n.Node.Outputs)
-	startY_out := y + nodeHeight/2 - (numOutputs-1)*portSpacing/2
-	for i, p := range n.Node.Outputs {
-		n.OutputPorts[p.Name] = image.Pt(x+nodeWidth, startY_out+i*portSpacing)
+	// Dynamically update port positions based on orientation
+	if orientation == Horizontal { // Left-to-Right layout
+		n.InputPorts["exec_in"] = image.Pt(x, y+20)
+		n.OutputPorts["exec_out"] = image.Pt(x+nodeWidth, y+20)
+		numInputs := len(n.Node.Inputs)
+		startY_in := y + nodeHeight/2 - (numInputs-1)*portSpacing/2
+		for i, p := range n.Node.Inputs {
+			n.InputPorts[p.Name] = image.Pt(x, startY_in+i*portSpacing)
+		}
+		numOutputs := len(n.Node.Outputs)
+		startY_out := y + nodeHeight/2 - (numOutputs-1)*portSpacing/2
+		for i, p := range n.Node.Outputs {
+			n.OutputPorts[p.Name] = image.Pt(x+nodeWidth, startY_out+i*portSpacing)
+		}
+	} else { // Top-to-Bottom layout
+		n.InputPorts["exec_in"] = image.Pt(x+25, y)
+		n.OutputPorts["exec_out"] = image.Pt(x+25, y+nodeHeight)
+		numInputs := len(n.Node.Inputs)
+		startX_in := x + nodeWidth/2 - (numInputs-1)*portSpacing/2
+		for i, p := range n.Node.Inputs {
+			n.InputPorts[p.Name] = image.Pt(startX_in+i*portSpacing, y)
+		}
+		numOutputs := len(n.Node.Outputs)
+		startX_out := x + nodeWidth/2 - (numOutputs-1)*portSpacing/2
+		for i, p := range n.Node.Outputs {
+			n.OutputPorts[p.Name] = image.Pt(startX_out+i*portSpacing, y+nodeHeight)
+		}
 	}
 }
 
-// CalculateLayout performs the initial hierarchical layout and returns a map of physics-enabled nodes.
-func CalculateLayout(graph *axon.Graph) map[string]*PhysicsNode {
-	physicsNodes := make(map[string]*PhysicsNode)
+// UpdateLayoutTargets calculates the ideal target positions for all nodes based on the given orientation.
+func UpdateLayoutTargets(nodes map[string]*PhysicsNode, graph *axon.Graph, orientation LayoutOrientation) {
+	// ... (The layering logic is the same, but the coordinate assignment changes) ...
+	execAdj, nodeMap := buildAdjacency(graph)
+	layers := calculateLayers(graph, execAdj, nodeMap)
+
+	for l, layerNodes := range layers {
+		if orientation == Horizontal {
+			layerHeight := len(layerNodes)*(nodeHeight+vSpacing) - vSpacing
+			startY := -layerHeight / 2
+			x := l * (nodeWidth + hSpacing)
+			for i, node := range layerNodes {
+				y := startY + i*(nodeHeight+vSpacing)
+				if pn, ok := nodes[node.Id]; ok {
+					pn.TargetPosition = Vec2{X: float64(x), Y: float64(y)}
+				}
+			}
+		} else { // Vertical
+			layerWidth := len(layerNodes)*(nodeWidth+hSpacing) - hSpacing
+			startX := -layerWidth / 2
+			y := l * (nodeHeight + vSpacing)
+			for i, node := range layerNodes {
+				x := startX + i*(nodeWidth+hSpacing)
+				if pn, ok := nodes[node.Id]; ok {
+					pn.TargetPosition = Vec2{X: float64(x), Y: float64(y)}
+				}
+			}
+		}
+	}
+}
+
+// --- Helper functions for layout calculation ---
+
+func buildAdjacency(graph *axon.Graph) (map[string][]string, map[string]*axon.Node) {
 	execAdj := make(map[string][]string)
 	nodeMap := make(map[string]*axon.Node)
 	for _, node := range graph.Nodes {
@@ -58,7 +111,10 @@ func CalculateLayout(graph *axon.Graph) map[string]*PhysicsNode {
 	for _, edge := range graph.ExecEdges {
 		execAdj[edge.FromNodeId] = append(execAdj[edge.FromNodeId], edge.ToNodeId)
 	}
+	return execAdj, nodeMap
+}
 
+func calculateLayers(graph *axon.Graph, execAdj map[string][]string, nodeMap map[string]*axon.Node) map[int][]*axon.Node {
 	layers := make(map[int][]*axon.Node)
 	visited := make(map[string]bool)
 	queue := []*axon.Node{}
@@ -93,25 +149,5 @@ func CalculateLayout(graph *axon.Graph) map[string]*PhysicsNode {
 			layers[globalsLayer] = append(layers[globalsLayer], node)
 		}
 	}
-
-	for l, layerNodes := range layers {
-		layerWidth := len(layerNodes)*(nodeWidth+hSpacing) - hSpacing
-		startX := -layerWidth / 2
-		y := l * (nodeHeight + vSpacing)
-
-		for i, node := range layerNodes {
-			x := startX + i*(nodeWidth+hSpacing)
-			pn := &PhysicsNode{
-				LayoutNode: &LayoutNode{
-					Node:        node,
-					InputPorts:  make(map[string]image.Point),
-					OutputPorts: make(map[string]image.Point),
-				},
-				Position: Vec2{X: float64(x), Y: float64(y)},
-			}
-			pn.updateRect()
-			physicsNodes[node.Id] = pn
-		}
-	}
-	return physicsNodes
+	return layers
 }
