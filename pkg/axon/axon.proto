@@ -56,7 +56,7 @@ message Node {
     map<string, string> config = 7;
 
     // Optional visual information.
-    VisualInfo visual_info = 8;
+    optional VisualInfo visual_info = 8;
 
     // List of comment IDs attached to this node.
     repeated string comment_ids = 9;
