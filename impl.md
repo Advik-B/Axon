@@ -8,7 +8,7 @@
 - Enforce every path of the execution flow that started from a start/start-like(future feature) node will end in the END node.
 
 
-## Special treatment for globals
+## Special treatment of globals
 
 - Also applies to functions, basically global-anything are excepmpt from execution flow, BUT function CALLING must adhere to [Execution Flow]
 - Any and all imports the programs makes should be defined in the graph file itself
