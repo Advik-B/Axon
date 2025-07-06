@@ -66,40 +66,34 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face text.Face, op *ebiten
 	}
 }
 
-// drawBezierCurve renders a smooth connection line between two points.
 func drawBezierCurve(screen *ebiten.Image, p0, p3 image.Point, clr color.Color, op *ebiten.DrawImageOptions) {
-	p1 := image.Pt(p0.X+hSpacing/2, p0.Y)
-	p2 := image.Pt(p3.X-hSpacing/2, p3.Y)
+    p1 := image.Pt(p0.X+hSpacing/2, p0.Y)
+    p2 := image.Pt(p3.X-hSpacing/2, p3.Y)
 
-	var path vector.Path
-	v0x, v0y := op.GeoM.Apply(float64(p0.X), float64(p0.Y))
-	v1x, v1y := op.GeoM.Apply(float64(p1.X), float64(p1.Y))
-	v2x, v2y := op.GeoM.Apply(float64(p2.X), float64(p2.Y))
-	v3x, v3y := op.GeoM.Apply(float64(p3.X), float64(p3.Y))
+    var path vector.Path
+    v0x, v0y := op.GeoM.Apply(float64(p0.X), float64(p0.Y))
+    v1x, v1y := op.GeoM.Apply(float64(p1.X), float64(p1.Y))
+    v2x, v2y := op.GeoM.Apply(float64(p2.X), float64(p2.Y))
+    v3x, v3y := op.GeoM.Apply(float64(p3.X), float64(p3.Y))
 
-	path.MoveTo(float32(v0x), float32(v0y))
-	path.CubicTo(float32(v1x), float32(v1y), float32(v2x), float32(v2y), float32(v3x), float32(v3y))
+    path.MoveTo(float32(v0x), float32(v0y))
+    path.CubicTo(float32(v1x), float32(v1y), float32(v2x), float32(v2y), float32(v3x), float32(v3y))
 
-	// **FIX**: The StrokeOptions struct does NOT have a Color field.
-	strokeOp := &vector.StrokeOptions{
-		Width: 1.5 * float32(op.GeoM.Element(0, 0)), // Scale stroke width with zoom
-	}
+    strokeOp := &vector.StrokeOptions{
+        Width: 1.5 * float32(op.GeoM.Element(0, 0)), // Adjust based on zoom
+    }
 
-	// **FIX**: The correct way to draw a stroked path is to get its vertices
-	// and indices, and then render them with DrawTriangles.
-	vertices, indices := path.AppendVerticesAndIndicesForStroke(nil, nil, strokeOp)
+    vertices, indices := path.AppendVerticesAndIndicesForStroke(nil, nil, strokeOp)
 
-	// **FIX**: The color is applied in the DrawTrianglesOptions, not StrokeOptions.
-	// Ebitengine provides a pre-made 1x1 white image to use as a source for solid colors.
-	drawTrianglesOp := &ebiten.DrawTrianglesOptions{
-		FillRule: ebiten.FillRuleFillAll,
+    // Convert color.Color to linear RGBA
+    r, g, b, a := clr.RGBA()
+    for i := range vertices {
+        vertices[i].ColorR = float32(r) / 0xffff
+        vertices[i].ColorG = float32(g) / 0xffff
+        vertices[i].ColorB = float32(b) / 0xffff
+        vertices[i].ColorA = float32(a) / 0xffff
+    }
 
-	}
-
-
-	white := getWhitePixel()
-	white.DrawTriangles(vertices, indices, white, drawTrianglesOp)
-	screen.DrawTriangles(vertices, indices, white, drawTrianglesOp)
-
-
+    white := getWhitePixel()
+    screen.DrawTriangles(vertices, indices, white, &ebiten.DrawTrianglesOptions{})
 }
