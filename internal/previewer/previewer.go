@@ -25,7 +25,6 @@ type Previewer struct {
 }
 
 
-// ... (NewPreviewer is unchanged) ...
 func NewPreviewer(graph *axon.Graph) (*Previewer, error) {
 	face := text.NewGoXFace(basicfont.Face7x13)
 
@@ -55,7 +54,7 @@ func (p *Previewer) Update() error {
 	return nil
 }
 
-// ... (Layout is unchanged) ...
+
 func (p *Previewer) Layout(outsideWidth, outsideHeight int) (int, int) {
 	if outsideWidth != p.lastWidth || outsideHeight != p.lastHeight {
 		p.lastWidth = outsideWidth
@@ -77,7 +76,6 @@ func (p *Previewer) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 
-// ... (Draw is unchanged) ...
 func (p *Previewer) Draw(screen *ebiten.Image) {
 	screen.Fill(colorBg)
 
@@ -176,7 +174,6 @@ func (p *Previewer) handleDragAndPan() {
 }
 
 
-// ... (initializePhysicsNodes and run are unchanged)
 func initializePhysicsNodes(graph *axon.Graph) map[string]*PhysicsNode {
 	physicsNodes := make(map[string]*PhysicsNode)
 	execAdj, nodeMap := buildAdjacency(graph)

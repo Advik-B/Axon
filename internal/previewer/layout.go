@@ -70,7 +70,6 @@ func (n *PhysicsNode) updateRect(orientation LayoutOrientation) {
 
 // UpdateLayoutTargets calculates the ideal target positions for all nodes based on the given orientation.
 func UpdateLayoutTargets(nodes map[string]*PhysicsNode, graph *axon.Graph, orientation LayoutOrientation) {
-	// ... (The layering logic is the same, but the coordinate assignment changes) ...
 	execAdj, nodeMap := buildAdjacency(graph)
 	layers := calculateLayers(graph, execAdj, nodeMap)
 
