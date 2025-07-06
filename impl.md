@@ -61,6 +61,7 @@ Comments can be plaintext or markdown.
 - A comment may be attached to multiple nodes (when transpiled, the comment will be copied over (be)for every node)
 
 ### Comments (special case)
+- Floating/Indipendent  comments
 - Comments can also be not associated with any node (although this is not recomended, we dont disallow it)
 - Comments like these are considered purely visual (will only show up on the node graph. but not the editor)
 - There comments will be LOST on transpilation to go code
