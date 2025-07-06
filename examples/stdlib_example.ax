@@ -1,21 +1,19 @@
 {
-  "id": "stdlib-example-v2",
-  "name": "Standard Library Demo with Full Validation",
+  "id": "stdlib-example-v3",
+  "name": "Standard Library Demo with Explicit Casting",
   "imports": ["fmt", "os", "strings"],
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "label": "Start",
-      "visual_info": { "x": 50, "y": 200 }
+      "label": "Start"
     },
     {
       "id": "filepath",
       "type": "CONSTANT",
       "label": "filePath",
       "outputs": [{ "name": "out", "type_name": "string" }],
-      "config": { "value": "\"hello.txt\"" },
-      "visual_info": { "x": 50, "y": 300 }
+      "config": { "value": "\"hello.txt\"" }
     },
     {
       "id": "readfile",
@@ -26,15 +24,21 @@
       "outputs": [
         { "name": "data", "type_name": "[]byte" },
         { "name": "err", "type_name": "error" }
-      ],
-      "visual_info": { "x": 250, "y": 200, "width": 180 }
+      ]
     },
     {
       "id": "error_ignorer",
       "type": "IGNORE",
       "label": "Ignore Error",
-      "inputs": [{ "name": "in", "type_name": "error" }],
-      "visual_info": { "x": 450, "y": 300 }
+      "inputs": [{ "name": "in", "type_name": "error" }]
+    },
+    {
+      "id": "cast_to_string",
+      "type": "OPERATOR",
+      "label": "fileString",
+      "config": { "op": "string" },
+      "inputs": [{ "name": "in", "type_name": "[]byte" }],
+      "outputs": [{ "name": "out", "type_name": "string" }]
     },
     {
       "id": "toupper",
@@ -42,33 +46,32 @@
       "label": "upperContents",
       "impl_reference": "strings.ToUpper",
       "inputs": [{ "name": "s", "type_name": "string" }],
-      "outputs": [{ "name": "out", "type_name": "string" }],
-      "visual_info": { "x": 450, "y": 100 }
+      "outputs": [{ "name": "out", "type_name": "string" }]
     },
     {
       "id": "printer",
       "type": "FUNCTION",
       "label": "Print",
       "impl_reference": "fmt.Println",
-      "inputs": [{ "name": "a", "type_name": "string" }],
-      "visual_info": { "x": 650, "y": 100 }
+      "inputs": [{ "name": "a", "type_name": "string" }]
     },
     {
       "id": "end",
       "type": "END",
-      "label": "End",
-      "visual_info": { "x": 850, "y": 200 }
+      "label": "End"
     }
   ],
   "data_edges": [
     { "from_node_id": "filepath", "from_port": "out", "to_node_id": "readfile", "to_port": "name" },
     { "from_node_id": "readfile", "from_port": "err", "to_node_id": "error_ignorer", "to_port": "in" },
-    { "from_node_id": "readfile", "from_port": "data", "to_node_id": "toupper", "to_port": "s" },
+    { "from_node_id": "readfile", "from_port": "data", "to_node_id": "cast_to_string", "to_port": "in" },
+    { "from_node_id": "cast_to_string", "from_port": "out", "to_node_id": "toupper", "to_port": "s" },
     { "from_node_id": "toupper", "from_port": "out", "to_node_id": "printer", "to_port": "a" }
   ],
   "exec_edges": [
     { "from_node_id": "start", "to_node_id": "readfile" },
-    { "from_node_id": "readfile", "to_node_id": "toupper" },
+    { "from_node_id": "readfile", "to_node_id": "cast_to_string" },
+    { "from_node_id": "cast_to_string", "to_node_id": "toupper" },
     { "from_node_id": "toupper", "to_node_id": "printer" },
     { "from_node_id": "printer", "to_node_id": "end" }
   ]
