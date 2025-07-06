@@ -75,7 +75,6 @@ func getWhitePixel() *ebiten.Image {
 	return whitePixel
 }
 
-// drawNode renders a single, beautifully styled node.
 func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face, op *ebiten.DrawImageOptions) {
 	tx, ty := op.GeoM.Apply(float64(node.Rect.Min.X), float64(node.Rect.Min.Y))
 	x, y := float32(tx), float32(ty)
@@ -85,14 +84,12 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face,
 
 	drawFilledRoundRect(screen, x+nodeShadowOffset, y+nodeShadowOffset, w, h, radius, colorNodeShadow)
 	drawFilledRoundRect(screen, x, y, w, h, radius, colorNodeBody)
-
 	nodeColor, ok := nodeColors[node.Type]
 	if !ok {
 		nodeColor = defaultNodeColor
 	}
 	drawFilledRoundRect(screen, x, y, w, nodeHeaderHeight*zoom, radius, nodeColor)
 	vector.DrawFilledRect(screen, x, y+(nodeHeaderHeight*zoom-radius), w, radius, nodeColor, false)
-
 	strokeRoundRect(screen, x, y, w, h, radius, 1, colorNodeBorder)
 
 	// --- Text Drawing ---
@@ -101,12 +98,12 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face,
 	titleOp.ColorScale.ScaleWithColor(colorText)
 	text.Draw(screen, node.Label, face, titleOp)
 
-	// **NEW**: Draw the small node type title on the header
+	// **FIX**: Draw the small node type title in the header, right-aligned.
 	if typeTitle, ok := nodeTypeTitles[node.Type]; ok {
 		typeOp := &text.DrawOptions{}
 		typeAdvance, _ := text.Measure(typeTitle, smallFace, 0)
 		typeOp.GeoM.Translate(float64(x+w)-typeAdvance-10, float64(y+22))
-		typeOp.ColorScale.ScaleWithColor(color.RGBA{255, 255, 255, 100}) // Semi-transparent white
+		typeOp.ColorScale.ScaleWithColor(color.RGBA{255, 255, 255, 100})
 		text.Draw(screen, typeTitle, smallFace, typeOp)
 	}
 
@@ -121,40 +118,35 @@ func drawNode(screen *ebiten.Image, node *LayoutNode, face, smallFace text.Face,
 }
 
 func drawPorts(screen *ebiten.Image, node *LayoutNode, face text.Face, op *ebiten.DrawImageOptions) {
-	if p, ok := node.InputPorts["exec_in"]; ok {
-		drawExecPin(screen, p, false, colorExec, op)
-	}
-	if p, ok := node.OutputPorts["exec_out"]; ok {
-		drawExecPin(screen, p, true, colorExec, op)
+	if node.Type != axon.NodeType_START {
+		if p, ok := node.InputPorts["exec_in"]; ok {
+			drawExecPin(screen, p, false, colorExec, op)
+		}
+		for name, p := range node.InputPorts {
+			if name == "exec_in" { continue }
+			var portType string
+			for _, portDef := range node.Inputs {
+				if portDef.Name == name { portType = portDef.TypeName; break }
+			}
+			drawDataPin(screen, p, portType, name, false, face, op)
+		}
 	}
 
-	for name, p := range node.InputPorts {
-		if name == "exec_in" {
-			continue
+	if node.Type != axon.NodeType_END && node.Type != axon.NodeType_RETURN {
+		if p, ok := node.OutputPorts["exec_out"]; ok {
+			drawExecPin(screen, p, true, colorExec, op)
 		}
-		var portType string
-		for _, portDef := range node.Inputs {
-			if portDef.Name == name {
-				portType = portDef.TypeName
-				break
+		for name, p := range node.OutputPorts {
+			if name == "exec_out" { continue }
+			var portType string
+			for _, portDef := range node.Outputs {
+				if portDef.Name == name { portType = portDef.TypeName; break }
 			}
+			drawDataPin(screen, p, portType, name, true, face, op)
 		}
-		drawDataPin(screen, p, portType, name, false, face, op)
-	}
-	for name, p := range node.OutputPorts {
-		if name == "exec_out" {
-			continue
-		}
-		var portType string
-		for _, portDef := range node.Outputs {
-			if portDef.Name == name {
-				portType = portDef.TypeName
-				break
-			}
-		}
-		drawDataPin(screen, p, portType, name, true, face, op)
 	}
 }
+
 
 func drawExecPin(screen *ebiten.Image, p image.Point, isOutput bool, clr color.Color, op *ebiten.DrawImageOptions) {
 	zoom := float32(op.GeoM.Element(0, 0))
@@ -189,12 +181,7 @@ func drawDataPin(screen *ebiten.Image, p image.Point, typeName, label string, is
 
 	labelOp := &text.DrawOptions{}
 	labelOp.ColorScale.ScaleWithColor(colorPortLabel)
-
-	// **THE FIX**: Measure the text's advance (width) and a capital letter's height for centering.
-	advance, _ := text.Measure(label, face, 0)
-	_, capHeight := text.Measure("A", face, 0) // Use height of a capital letter for vertical alignment
-
-	// Calculate the correct Y offset to center the text baseline with the circle's center.
+	advance, capHeight := text.Measure(label, face, 0)
 	yOffset := float64(ty) + capHeight/2
 
 	if isOutput {
@@ -204,6 +191,7 @@ func drawDataPin(screen *ebiten.Image, p image.Point, typeName, label string, is
 	}
 	text.Draw(screen, label, face, labelOp)
 }
+
 
 func drawBezierCurve(screen *ebiten.Image, p0, p3 image.Point, clr color.Color, op *ebiten.DrawImageOptions) {
 	dx, dy := p3.X-p0.X, p3.Y-p0.Y

@@ -36,7 +36,7 @@ func GenerateDebugGraph(graph *axon.Graph) *DebugGraph {
 func generateNodeComment(node *axon.Node, graph *axon.Graph, nodeLabels map[string]string) string {
 	var sb strings.Builder
 
-	// **THE FIX**: Create a more meaningful detail string instead of the raw ID.
+	// **THE FIX**: Create a more meaningful detail string.
 	var details string
 	switch node.Type {
 	case axon.NodeType_CONSTANT:
@@ -46,10 +46,10 @@ func generateNodeComment(node *axon.Node, graph *axon.Graph, nodeLabels map[stri
 	case axon.NodeType_OPERATOR:
 		details = fmt.Sprintf("op: '%s'", node.Config["op"])
 	default:
-		details = node.Id // Fallback for other types
+		details = node.Type.String() // Fallback to the type name
 	}
 
-	sb.WriteString(fmt.Sprintf(" Node: %s (%s)\n Type: %s", node.Label, details, node.Type.String()))
+	sb.WriteString(fmt.Sprintf(" Node: %s (%s)", node.Label, details))
 
 	// Describe input data connections
 	for _, inputPort := range node.Inputs {
