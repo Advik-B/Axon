@@ -5,31 +5,27 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Advik-B/Axon/internal/parser"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
-	"github.com/Advik-B/Axon/internal/parser"
 )
 
 // unpackCmd represents the unpack command
 var unpackCmd = &cobra.Command{
-	Use:   "unpack [path/to/graph.axb]",
-	Short: "Unpacks a binary .axb file into a JSON-based .ax file.",
-	Long: `Reads a binary .axb file and decodes it into the human-readable .ax (JSON)
-format. This is useful for debugging, manual editing, or version control.`,
+	Use:   "unpack [path/to/graph.axb | path/to/graph.axd]",
+	Short: "Unpacks a binary .axb or debug .axd file into a JSON .ax file.",
+	Long: `Reads a binary .axb or a debug .axd file and decodes it into the
+human-readable .ax (JSON) format. This is useful for inspection or conversion.`,
 	Args: cobra.ExactArgs(1),
 	Run:  runUnpack,
 }
 
-// Graph is an alias to the generated struct for use within this command.
-type Graph = parser.Graph
-
 func runUnpack(cmd *cobra.Command, args []string) {
 	filePath := args[0]
 
-	// 1. Validate file exists and has the correct extension
-	if !strings.HasSuffix(filePath, ".axb") {
-		fmt.Println("❌ Error: Input file must be a .axb (binary) file.")
+	// Validate file exists and has a supported extension
+	if !strings.HasSuffix(filePath, ".axb") && !strings.HasSuffix(filePath, ".axd") {
+		fmt.Println("❌ Error: Input file must be a .axb (binary) or .axd (debug YAML) file.")
 		os.Exit(1)
 	}
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -38,35 +34,30 @@ func runUnpack(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("📂 Unpacking file: %s\n", filePath)
 
-	// 2. Read the binary .axb file
-	binaryData, err := os.ReadFile(filePath)
+	// Load the graph. The parser now understands .axb and .axd.
+	graph, err := parser.LoadGraphFromFile(filePath)
 	if err != nil {
-		fmt.Printf("❌ Error reading binary file: %v\n", err)
+		fmt.Printf("❌ Error parsing graph file: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Println("   - Successfully parsed source graph.")
 
-	// 3. Unmarshal the binary data into a graph struct
-	var graph Graph
-	if err := proto.Unmarshal(binaryData, &graph); err != nil {
-		fmt.Printf("❌ Error unmarshaling binary data into graph: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("   - Successfully parsed binary graph.")
-
-	// 4. Marshal the graph struct into pretty-printed JSON
+	// Marshal the graph struct into pretty-printed JSON
 	jsonMarshaler := protojson.MarshalOptions{
-		Indent: "  ",
+		Indent:        "  ",
 		UseProtoNames: true,
 	}
-	jsonData, err := jsonMarshaler.Marshal(&graph)
+	jsonData, err := jsonMarshaler.Marshal(graph)
 	if err != nil {
 		fmt.Printf("❌ Error marshaling graph to JSON: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("   - Serialized graph to JSON format.")
 
-	// 5. Write the output to a .ax file
-	outputPath := strings.TrimSuffix(filePath, ".axb") + ".ax"
+	// Determine output path
+	outputPath := strings.TrimSuffix(filePath, ".axb")
+	outputPath = strings.TrimSuffix(outputPath, ".axd") + ".ax"
+
 	err = os.WriteFile(outputPath, jsonData, 0644)
 	if err != nil {
 		fmt.Printf("❌ Error writing to output file %s: %v\n", outputPath, err)
