@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/Advik-B/Axon/parser"
+	"github.com/Advik-B/Axon/previewer"
 	"log"
 	"os"
 
-	"github.com/Advik-B/Axon/internal/parser"
-	"github.com/Advik-B/Axon/internal/previewer"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/spf13/cobra"
 )

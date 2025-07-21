@@ -3,13 +3,13 @@ package previewer
 import (
 	"bytes"
 	"fmt"
+	"github.com/Advik-B/Axon/transpiler"
 	"image"
 	"image/color"
 	"log"
 	"math"
 	"strings"
 
-	"github.com/Advik-B/Axon/internal/transpiler"
 	"github.com/Advik-B/Axon/pkg/axon"
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
