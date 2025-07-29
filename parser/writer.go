@@ -3,10 +3,10 @@ package parser
 import (
 	"bytes"
 	"fmt"
+	"github.com/Advik-B/Axon/debug"
 	"os"
 	"path/filepath"
 
-	"github.com/Advik-B/Axon/internal/debug"
 	"github.com/ulikunitz/xz"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"

@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	parser2 "github.com/Advik-B/Axon/parser"
 	"os"
 	"path/filepath"
 
-	"github.com/Advik-B/Axon/internal/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -82,14 +82,14 @@ func runConvert(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("🔄 Converting %s -> %s...\n", inputPath, outputPath)
 
-	graph, err := parser.LoadGraphFromFile(inputPath)
+	graph, err := parser2.LoadGraphFromFile(inputPath)
 	if err != nil {
 		fmt.Printf("❌ Error reading input file: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("   - Successfully parsed input graph.")
 
-	err = parser.SaveGraphToFile(graph, outputPath)
+	err = parser2.SaveGraphToFile(graph, outputPath)
 	if err != nil {
 		fmt.Printf("❌ Error writing output file: %v\n", err)
 		os.Exit(1)

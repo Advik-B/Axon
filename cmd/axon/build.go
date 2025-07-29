@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/Advik-B/Axon/parser"
+	"github.com/Advik-B/Axon/transpiler"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/Advik-B/Axon/internal/parser"
-	"github.com/Advik-B/Axon/internal/transpiler"
 	"github.com/spf13/cobra"
 )
 

@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	parser2 "github.com/Advik-B/Axon/parser"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/Advik-B/Axon/internal/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ func runPack(cmd *cobra.Command, args []string) {
 
 	// 1. Load the graph from any supported format. The parser handles the complexity.
 	fmt.Printf("📦 Reading source graph: %s\n", filePath)
-	graph, err := parser.LoadGraphFromFile(filePath)
+	graph, err := parser2.LoadGraphFromFile(filePath)
 	if err != nil {
 		fmt.Printf("❌ Error parsing graph file: %v\n", err)
 		os.Exit(1)
@@ -37,7 +37,7 @@ func runPack(cmd *cobra.Command, args []string) {
 	fmt.Printf("   -> Compressing to: %s\n", outputPath)
 
 	// 3. Save the graph to the .axc format. The writer handles the marshal-then-compress logic.
-	err = parser.SaveGraphToFile(graph, outputPath)
+	err = parser2.SaveGraphToFile(graph, outputPath)
 	if err != nil {
 		fmt.Printf("❌ Error writing compressed file: %v\n", err)
 		os.Exit(1)
