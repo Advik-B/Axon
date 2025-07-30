@@ -17,6 +17,9 @@ PROTO_SRC=pkg/axon/axon.proto
 # Output directory for transpiled Go code
 OUTPUT_DIR=./out
 
+FRONTEND_PROTO_PATH=./editor/frontend/src/lib/proto
+
+
 # --- Targets ---
 
 .PHONY: all build run proto test clean install-deps help
@@ -37,9 +40,13 @@ run:
 
 # Generate Go code from the .proto definition file
 proto:
-	@echo "Generating Go code from Protobuf definition..."
+	@echo "Generating Go and JavaScript code from Protobuf definition..."
+	@mkdir -p $(FRONTEND_PROTO_PATH)
+	# Generate Go code
 	@protoc --go_out=. --go_opt=paths=source_relative $(PROTO_SRC)
-	@echo "✅ Protobuf generation complete."
+	# Generate JavaScript code
+	@protoc --js_out=import_style=commonjs,binary:$(FRONTEND_PROTO_PATH) $(PROTO_SRC)
+	@echo "✅ Protobuf generation complete for Go and JS."
 
 # Run all tests in the project
 test:
