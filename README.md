@@ -29,6 +29,14 @@ Tired of boilerplate? Teaching a new programmer? Want to *see* your logic?
 
 It’s the clarity of flowcharts with the power of a compiled language.
 
+## 🎨 Official Visual Editor
+
+To create and edit Axon graphs, use the official visual editor. It's a dedicated desktop application built with Wails and Svelte, providing a rich, interactive experience for building your visual programs.
+
+The editor is developed in a separate repository:
+
+➡️ **[github.com/Advik-B/Axon-Editor](https://github.com/Advik-B/Axon-Editor)** ⬅️
+
 ## 📺 Interactive Preview
 
 The star of the show. Axon's previewer isn't just a static diagram. It's a living, breathing visualization of your graph's structure, complete with a spring-mass physics simulation and a live-transpiled code view.
