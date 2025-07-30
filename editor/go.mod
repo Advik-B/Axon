@@ -1,4 +1,4 @@
-module editor
+module github.com/Advik-B/Axon/editor
 
 go 1.24.4
 
