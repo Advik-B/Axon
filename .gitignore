@@ -1,2 +1,8 @@
 *.exe
 out/
+.idea/
+axon
+axon.exe
+editor/node_modules/
+editor/dist/
+editor/.svelte-kit/

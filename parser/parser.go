@@ -76,3 +76,15 @@ func LoadGraphFromFile(filePath string) (*Graph, error) {
 
 	return &graph, nil
 }
+
+// LoadGraphFromBytes reads a graph from raw bytes, assuming JSON format (.ax).
+func LoadGraphFromBytes(data []byte) (*Graph, error) {
+	var graph Graph
+	
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := unmarshaler.Unmarshal(data, &graph); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON bytes: %w", err)
+	}
+	
+	return &graph, nil
+}
