@@ -6,3 +6,4 @@ axon.exe
 editor/node_modules/
 editor/dist/
 editor/.svelte-kit/
+axon
